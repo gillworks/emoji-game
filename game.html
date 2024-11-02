@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Emoji Adventure</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100vw;
+        height: 100vh;
+        font-family: Arial, sans-serif;
+        background: #1a1a1a;
+        color: white;
+        overflow: hidden;
+      }
+
+      #game-container {
+        text-align: center;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+
+      #game-map {
+        flex: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: #2a2a2a;
+        padding: 20px;
+        margin: 20px;
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+        cursor: grab;
+      }
+
+      #map-canvas {
+        position: absolute;
+      }
+
+      #status-bar {
+        padding: 10px;
+        background: #333;
+        border-radius: 5px;
+        display: flex;
+        justify-content: space-around;
+        margin: 10px 20px 0 20px;
+      }
+
+      #battle-screen {
+        display: none;
+        background: #333;
+        padding: 20px;
+        border-radius: 10px;
+        margin: 20px;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        min-width: 300px;
+      }
+
+      .battle-option {
+        margin: 10px;
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        background: #4a4a4a;
+        border: none;
+        border-radius: 5px;
+        color: white;
+      }
+
+      .battle-option:hover {
+        background: #5a5a5a;
+      }
+
+      #game-over {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.9);
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+      }
+
+      #restart-button {
+        margin-top: 20px;
+        padding: 10px 20px;
+        font-size: 18px;
+        cursor: pointer;
+        background: #4caf50;
+        border: none;
+        border-radius: 5px;
+        color: white;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game-container">
+      <div id="status-bar">
+        <div>Health: <span id="health">100</span></div>
+        <div>Score: <span id="score">0</span></div>
+      </div>
+      <div id="game-map">
+        <canvas id="map-canvas"></canvas>
+      </div>
+      <div id="battle-screen">
+        <div id="battle-text"></div>
+        <div id="battle-options">
+          <button class="battle-option" onclick="chooseBattle('fight')">
+            Fight
+          </button>
+          <button class="battle-option" onclick="chooseBattle('flee')">
+            Flee
+          </button>
+        </div>
+        <div id="attack-options" style="display: none">
+          <button class="battle-option" onclick="chooseAttack('quick')">
+            Quick Attack 🌪️
+          </button>
+          <button class="battle-option" onclick="chooseAttack('heavy')">
+            Heavy Attack 🔨
+          </button>
+          <button class="battle-option" onclick="chooseAttack('block')">
+            Block 🛡️
+          </button>
+        </div>
+      </div>
+      <div id="game-over">
+        <h1>Game Over!</h1>
+        <p>Final Score: <span id="final-score">0</span></p>
+        <button id="restart-button" onclick="restartGame()">Play Again</button>
+      </div>
+    </div>
+
+    <script>
+      const MAP_SIZE = 120;
+      const TERRAIN_TYPES = {
+        FOREST: { emoji: "🌳", encounter: "🐺" },
+        MOUNTAIN: { emoji: "🏔️", encounter: "🐆" },
+        PLAIN: { emoji: "🌱", encounter: "🦁" },
+        OCEAN: { emoji: "🌊", encounter: "🦈" },
+      };
+
+      let gameState = {
+        map: [],
+        playerPos: { x: 60, y: 60 },
+        health: 100,
+        score: 0,
+        inBattle: false,
+        currentEnemy: null,
+        playerHits: 0,
+        enemyHits: 0,
+        viewport: {
+          x: 0,
+          y: 0,
+          scale: 1,
+          isDragging: false,
+          lastX: 0,
+          lastY: 0,
+        },
+      };
+
+      function initMap() {
+        for (let y = 0; y < MAP_SIZE; y++) {
+          gameState.map[y] = [];
+          for (let x = 0; x < MAP_SIZE; x++) {
+            const rand = Math.random();
+            if (rand < 0.3) gameState.map[y][x] = TERRAIN_TYPES.FOREST;
+            else if (rand < 0.5) gameState.map[y][x] = TERRAIN_TYPES.MOUNTAIN;
+            else if (rand < 0.8) gameState.map[y][x] = TERRAIN_TYPES.PLAIN;
+            else gameState.map[y][x] = TERRAIN_TYPES.OCEAN;
+          }
+        }
+      }
+
+      function renderMap() {
+        const canvas = document.getElementById("map-canvas");
+        const ctx = canvas.getContext("2d");
+        const cellSize = Math.min(window.innerWidth, window.innerHeight) * 0.04; // Matches the CSS min(4vw, 4vh)
+
+        // Set canvas size
+        canvas.width = MAP_SIZE * cellSize;
+        canvas.height = MAP_SIZE * cellSize;
+
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw terrain
+        for (let y = 0; y < MAP_SIZE; y++) {
+          for (let x = 0; x < MAP_SIZE; x++) {
+            ctx.font = `${cellSize * 0.6}px Arial`; // Slightly smaller than cell size
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+
+            // Draw terrain emoji
+            ctx.fillText(
+              gameState.map[y][x].emoji,
+              x * cellSize + cellSize / 2,
+              y * cellSize + cellSize / 2
+            );
+
+            // Draw player
+            if (x === gameState.playerPos.x && y === gameState.playerPos.y) {
+              ctx.fillText(
+                "🐻",
+                x * cellSize + cellSize / 2,
+                y * cellSize + cellSize / 2
+              );
+            }
+          }
+        }
+
+        // Apply viewport transform to the canvas element
+        canvas.style.transform = `translate(${gameState.viewport.x}px, ${gameState.viewport.y}px) scale(${gameState.viewport.scale})`;
+      }
+
+      function initCanvas() {
+        const canvas = document.getElementById("map-canvas");
+        const cellSize = Math.min(window.innerWidth, window.innerHeight) * 0.04;
+
+        canvas.width = MAP_SIZE * cellSize;
+        canvas.height = MAP_SIZE * cellSize;
+      }
+
+      function updateStatus() {
+        document.getElementById("health").textContent = gameState.health;
+        document.getElementById("score").textContent = gameState.score;
+      }
+
+      function checkEncounter() {
+        if (Math.random() < 0.3) {
+          gameState.inBattle = true;
+          const currentTerrain =
+            gameState.map[gameState.playerPos.y][gameState.playerPos.x];
+          gameState.currentEnemy = currentTerrain.encounter;
+          showBattleScreen();
+        }
+      }
+
+      function showBattleScreen() {
+        document.getElementById("battle-screen").style.display = "block";
+        document.getElementById(
+          "battle-text"
+        ).innerHTML = `A wild ${gameState.currentEnemy} appeared!`;
+        document.getElementById("battle-options").style.display = "block";
+        document.getElementById("attack-options").style.display = "none";
+      }
+
+      function chooseBattle(choice) {
+        if (choice === "fight") {
+          document.getElementById("battle-options").style.display = "none";
+          document.getElementById("attack-options").style.display = "block";
+          document.getElementById("battle-text").innerHTML =
+            "Choose your attack!";
+        } else {
+          if (Math.random() < 0.6) {
+            endBattle();
+            document.getElementById("battle-text").innerHTML =
+              "Got away safely!";
+          } else {
+            gameState.health -= 10;
+            updateStatus();
+            document.getElementById("battle-text").innerHTML =
+              "Couldn't escape! Lost 10 health!";
+            if (gameState.health <= 0) {
+              gameOver();
+            }
+          }
+        }
+      }
+
+      function chooseAttack(playerChoice) {
+        const choices = ["quick", "heavy", "block"];
+        const enemyChoice = choices[Math.floor(Math.random() * choices.length)];
+
+        let result = "";
+        if (
+          (playerChoice === "quick" && enemyChoice === "heavy") ||
+          (playerChoice === "heavy" && enemyChoice === "block") ||
+          (playerChoice === "block" && enemyChoice === "quick")
+        ) {
+          gameState.playerHits++;
+          result = "You hit the enemy!";
+        } else if (playerChoice === enemyChoice) {
+          result = "Draw!";
+        } else {
+          gameState.enemyHits++;
+          gameState.health -= 10;
+          result = "Enemy hit you! -10 health";
+        }
+
+        document.getElementById(
+          "battle-text"
+        ).innerHTML = `Your ${playerChoice} VS Enemy ${enemyChoice}<br>${result}<br>
+                Your hits: ${gameState.playerHits} | Enemy hits: ${gameState.enemyHits}`;
+
+        updateStatus();
+
+        if (gameState.playerHits >= 3) {
+          gameState.score += 100;
+          updateStatus();
+          document.getElementById("battle-text").innerHTML +=
+            "<br>You won! +100 points";
+          setTimeout(endBattle, 1500);
+        } else if (gameState.enemyHits >= 3) {
+          document.getElementById("battle-text").innerHTML += "<br>You lost!";
+          setTimeout(endBattle, 1500);
+        }
+
+        if (gameState.health <= 0) {
+          gameOver();
+        }
+      }
+
+      function endBattle() {
+        gameState.inBattle = false;
+        gameState.currentEnemy = null;
+        gameState.playerHits = 0;
+        gameState.enemyHits = 0;
+        document.getElementById("battle-screen").style.display = "none";
+      }
+
+      function gameOver() {
+        document.getElementById("game-over").style.display = "flex";
+        document.getElementById("final-score").textContent = gameState.score;
+      }
+
+      function restartGame() {
+        gameState = {
+          map: [],
+          playerPos: { x: 60, y: 60 },
+          health: 100,
+          score: 0,
+          inBattle: false,
+          currentEnemy: null,
+          playerHits: 0,
+          enemyHits: 0,
+          viewport: {
+            x: 0,
+            y: 0,
+            scale: 1,
+            isDragging: false,
+            lastX: 0,
+            lastY: 0,
+          },
+        };
+        initMap();
+        initCanvas();
+        renderMap();
+        updateStatus();
+        document.getElementById("game-over").style.display = "none";
+        document.getElementById("battle-screen").style.display = "none";
+      }
+
+      // Pan handling
+      const gameMap = document.getElementById("game-map");
+
+      gameMap.addEventListener("mousedown", (e) => {
+        if (gameState.inBattle) return;
+        gameState.viewport.isDragging = true;
+        gameState.viewport.lastX = e.clientX;
+        gameState.viewport.lastY = e.clientY;
+        gameMap.style.cursor = "grabbing";
+      });
+
+      gameMap.addEventListener("mousemove", (e) => {
+        if (!gameState.viewport.isDragging) return;
+
+        const dx = e.clientX - gameState.viewport.lastX;
+        const dy = e.clientY - gameState.viewport.lastY;
+
+        gameState.viewport.x += dx;
+        gameState.viewport.y += dy;
+
+        gameState.viewport.lastX = e.clientX;
+        gameState.viewport.lastY = e.clientY;
+
+        renderMap();
+      });
+
+      gameMap.addEventListener("mouseup", () => {
+        gameState.viewport.isDragging = false;
+        gameMap.style.cursor = "grab";
+      });
+
+      gameMap.addEventListener("mouseleave", () => {
+        gameState.viewport.isDragging = false;
+        gameMap.style.cursor = "grab";
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (gameState.inBattle) return;
+
+        const newPos = { ...gameState.playerPos };
+
+        switch (e.key) {
+          case "ArrowUp":
+            if (newPos.y > 0) newPos.y--;
+            break;
+          case "ArrowDown":
+            if (newPos.y < MAP_SIZE - 1) newPos.y++;
+            break;
+          case "ArrowLeft":
+            if (newPos.x > 0) newPos.x--;
+            break;
+          case "ArrowRight":
+            if (newPos.x < MAP_SIZE - 1) newPos.x++;
+            break;
+          default:
+            return;
+        }
+
+        gameState.playerPos = newPos;
+        renderMap();
+        checkEncounter();
+      });
+
+      // Initialize game
+      initMap();
+      initCanvas();
+      renderMap();
+      updateStatus();
+
+      // Add window resize handler
+      window.addEventListener("resize", () => {
+        initCanvas();
+        renderMap();
+      });
+    </script>
+  </body>
+</html>
