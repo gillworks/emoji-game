@@ -2,6 +2,23 @@
 <html>
   <head>
     <title>Emoji Adventure</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script>
+      function getEnvVariable(name) {
+        if (window.env && window.env[name]) {
+          return window.env[name];
+        }
+        console.error(`Environment variable ${name} not found`);
+        return null;
+      }
+
+      // Initialize Supabase client
+      const supabaseClient = supabase.createClient(
+        getEnvVariable("NEXT_PUBLIC_SUPABASE_URL"),
+        getEnvVariable("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+      );
+    </script>
     <style>
       body {
         margin: 0;
@@ -169,6 +186,8 @@
           lastX: 0,
           lastY: 0,
         },
+        playerId: null,
+        otherPlayers: new Map(),
       };
 
       function initMap() {
@@ -181,6 +200,115 @@
             else if (rand < 0.8) gameState.map[y][x] = TERRAIN_TYPES.PLAIN;
             else gameState.map[y][x] = TERRAIN_TYPES.OCEAN;
           }
+        }
+      }
+
+      async function initSupabase() {
+        try {
+          console.log("Initializing Supabase...");
+
+          const {
+            data: { session },
+            error: sessionError,
+          } = await supabaseClient.auth.getSession();
+          console.log("Session check:", session, sessionError);
+
+          if (!session) {
+            console.log("No session, using magic link...");
+            const email = prompt("Enter your email to play:", "");
+            if (!email) {
+              throw new Error("Email is required to play");
+            }
+
+            const { data, error } = await supabaseClient.auth.signInWithOtp({
+              email: email,
+              options: {
+                emailRedirectTo: window.location.href,
+              },
+            });
+
+            if (error) {
+              console.error("Sign in error:", error);
+              throw error;
+            }
+
+            alert("Check your email for the login link!");
+            console.log("Magic link sent:", data);
+            return;
+          }
+
+          const {
+            data: { user },
+            error: userError,
+          } = await supabaseClient.auth.getUser();
+          if (userError) {
+            console.error("Get user error:", userError);
+            throw userError;
+          }
+
+          gameState.playerId = user.id;
+          console.log("Player ID set:", gameState.playerId);
+
+          // Create player record if it doesn't exist
+          console.log("Creating player record...");
+          const { error: playerError } = await supabaseClient
+            .from("players")
+            .upsert({
+              id: gameState.playerId,
+              username: user.email.split("@")[0], // Use part before @ as username
+              created_at: new Date().toISOString(), // Add created_at timestamp
+            });
+
+          if (playerError) {
+            console.error("Player creation error:", playerError);
+            throw playerError;
+          }
+
+          // Add a small delay to ensure the player record is created
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+
+          console.log("Player record created successfully");
+
+          // Subscribe to player position changes
+          const channel = supabaseClient
+            .channel("player_positions")
+            .on(
+              "postgres_changes",
+              {
+                event: "*",
+                schema: "public",
+                table: "player_positions",
+              },
+              (payload) => {
+                if (payload.new.player_id !== gameState.playerId) {
+                  gameState.otherPlayers.set(payload.new.player_id, {
+                    x: payload.new.x,
+                    y: payload.new.y,
+                  });
+                  renderMap();
+                }
+              }
+            )
+            .subscribe();
+
+          console.log("Channel subscribed");
+
+          // Insert initial player position
+          const { data: posData, error: posError } = await supabaseClient
+            .from("player_positions")
+            .upsert({
+              player_id: gameState.playerId,
+              x: gameState.playerPos.x,
+              y: gameState.playerPos.y,
+            });
+
+          if (posError) {
+            console.error("Position update error:", posError);
+            throw posError;
+          }
+          console.log("Initial position set:", posData);
+        } catch (error) {
+          console.error("Error initializing Supabase:", error);
         }
       }
 
@@ -218,6 +346,17 @@
                 y * cellSize + cellSize / 2
               );
             }
+
+            // Add this to draw other players
+            gameState.otherPlayers.forEach((pos) => {
+              if (x === pos.x && y === pos.y) {
+                ctx.fillText(
+                  "🦊", // Different emoji for other players
+                  x * cellSize + cellSize / 2,
+                  y * cellSize + cellSize / 2
+                );
+              }
+            });
           }
         }
 
@@ -354,6 +493,8 @@
             lastX: 0,
             lastY: 0,
           },
+          playerId: null,
+          otherPlayers: new Map(),
         };
         initMap();
         initCanvas();
@@ -399,7 +540,7 @@
         gameMap.style.cursor = "grab";
       });
 
-      document.addEventListener("keydown", (e) => {
+      document.addEventListener("keydown", async (e) => {
         if (gameState.inBattle) return;
 
         const newPos = { ...gameState.playerPos };
@@ -422,15 +563,40 @@
         }
 
         gameState.playerPos = newPos;
+
+        // Update position in Supabase
+        try {
+          const { error } = await supabaseClient
+            .from("player_positions")
+            .upsert({
+              player_id: gameState.playerId,
+              x: newPos.x,
+              y: newPos.y,
+            });
+
+          if (error) {
+            console.error("Position update error:", error);
+            throw error;
+          }
+        } catch (error) {
+          console.error("Error updating position:", error);
+        }
+
         renderMap();
         checkEncounter();
       });
 
       // Initialize game
-      initMap();
-      initCanvas();
-      renderMap();
-      updateStatus();
+      async function initGame() {
+        await initSupabase();
+        initMap();
+        initCanvas();
+        renderMap();
+        updateStatus();
+      }
+
+      // Replace the initialization calls with:
+      initGame();
 
       // Add window resize handler
       window.addEventListener("resize", () => {
