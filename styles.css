@@ -223,3 +223,53 @@ body {
   min-width: 18px;
   text-align: center;
 }
+
+/* Add these new styles */
+.battle-container {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  margin: 20px 0;
+}
+
+.battle-fighter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.fighter-emoji {
+  font-size: 48px;
+}
+
+.hearts {
+  display: flex;
+  gap: 5px;
+  font-size: 24px;
+}
+
+.attack-result {
+  position: absolute;
+  font-size: 32px;
+  animation: fadeUp 1s forwards;
+}
+
+@keyframes fadeUp {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
+.battle-moves {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 24px;
+}

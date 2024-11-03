@@ -63,7 +63,17 @@
         <canvas id="map-canvas"></canvas>
       </div>
       <div id="battle-screen">
-        <div id="battle-text"></div>
+        <div class="battle-container">
+          <div class="battle-fighter">
+            <div class="fighter-emoji">🐻</div>
+            <div class="hearts" id="player-hearts">❤️❤️❤️</div>
+          </div>
+          <div class="battle-moves" id="battle-moves"></div>
+          <div class="battle-fighter">
+            <div class="fighter-emoji" id="enemy-emoji"></div>
+            <div class="hearts" id="enemy-hearts">❤️❤️❤️</div>
+          </div>
+        </div>
         <div id="battle-options">
           <button class="battle-option" onclick="chooseBattle('fight')">
             <span class="key-indicator">F</span>
@@ -861,29 +871,36 @@
 
       function showBattleScreen() {
         document.getElementById("battle-screen").style.display = "block";
-        document.getElementById(
-          "battle-text"
-        ).innerHTML = `A wild ${gameState.currentEnemy} appeared!`;
+        document.getElementById("enemy-emoji").textContent =
+          gameState.currentEnemy;
         document.getElementById("battle-options").style.display = "block";
         document.getElementById("attack-options").style.display = "none";
+        document.getElementById("battle-moves").innerHTML = "";
+
+        // Reset hearts
+        document.getElementById("player-hearts").innerHTML = "❤️❤️❤️";
+        document.getElementById("enemy-hearts").innerHTML = "❤️❤️❤️";
       }
 
       function chooseBattle(choice) {
         if (choice === "fight") {
           document.getElementById("battle-options").style.display = "none";
           document.getElementById("attack-options").style.display = "block";
-          document.getElementById("battle-text").innerHTML =
+          document.getElementById("battle-moves").innerHTML =
             "Choose your attack!";
         } else {
           if (Math.random() < 0.6) {
-            endBattle();
-            document.getElementById("battle-text").innerHTML =
-              "Got away safely!";
+            // Successful escape
+            const battleMoves = document.getElementById("battle-moves");
+            battleMoves.innerHTML = "🏃 Got away safely!";
+            setTimeout(endBattle, 1500);
           } else {
+            // Failed escape
             gameState.health -= 10;
             updateStatus();
-            document.getElementById("battle-text").innerHTML =
-              "Couldn't escape! Lost 10 health!";
+            const battleMoves = document.getElementById("battle-moves");
+            battleMoves.innerHTML = "😰 Couldn't escape! -10 health!";
+
             if (gameState.health <= 0) {
               gameOver();
             }
@@ -895,6 +912,17 @@
         const choices = ["quick", "heavy", "block"];
         const enemyChoice = choices[Math.floor(Math.random() * choices.length)];
 
+        const attackEmojis = {
+          quick: "🌪️",
+          heavy: "🔨",
+          block: "🛡️",
+        };
+
+        // Show the moves
+        document.getElementById(
+          "battle-moves"
+        ).innerHTML = `${attackEmojis[playerChoice]} VS ${attackEmojis[enemyChoice]}`;
+
         let result = "";
         if (
           (playerChoice === "quick" && enemyChoice === "heavy") ||
@@ -902,31 +930,46 @@
           (playerChoice === "block" && enemyChoice === "quick")
         ) {
           gameState.playerHits++;
-          result = "You hit the enemy!";
+          result = "✨";
+          // Update enemy hearts
+          const hearts = document.getElementById("enemy-hearts");
+          hearts.innerHTML = "❤️".repeat(3 - gameState.playerHits);
         } else if (playerChoice === enemyChoice) {
-          result = "Draw!";
+          result = "🤜🤛";
         } else {
           gameState.enemyHits++;
-          gameState.health -= 10;
-          result = "Enemy hit you! -10 health";
+          result = "💥";
+          // Update player hearts
+          const hearts = document.getElementById("player-hearts");
+          hearts.innerHTML = "❤️".repeat(3 - gameState.enemyHits);
         }
 
-        document.getElementById(
-          "battle-text"
-        ).innerHTML = `Your ${playerChoice} VS Enemy ${enemyChoice}<br>${result}<br>
-                Your hits: ${gameState.playerHits} | Enemy hits: ${gameState.enemyHits}`;
+        // Show hit animation
+        const battleContainer = document.querySelector(".battle-container");
+        const resultElement = document.createElement("div");
+        resultElement.className = "attack-result";
+        resultElement.textContent = result;
+        resultElement.style.left = "50%";
+        resultElement.style.top = "50%";
+        battleContainer.appendChild(resultElement);
 
-        updateStatus();
+        // Remove the animation element after it completes
+        setTimeout(() => {
+          resultElement.remove();
+        }, 1000);
 
         if (gameState.playerHits >= 3) {
           gameState.score += 100;
           updateStatus();
-          document.getElementById("battle-text").innerHTML +=
-            "<br>You won! +100 points";
-          setTimeout(endBattle, 1500);
+          setTimeout(() => {
+            showVictoryAnimation();
+            setTimeout(endBattle, 1500);
+          }, 1000);
         } else if (gameState.enemyHits >= 3) {
-          document.getElementById("battle-text").innerHTML += "<br>You lost!";
-          setTimeout(endBattle, 1500);
+          setTimeout(() => {
+            showDefeatAnimation();
+            setTimeout(endBattle, 1500);
+          }, 1000);
         }
 
         if (gameState.health <= 0) {
@@ -1289,6 +1332,16 @@
         // Clear the message cycling interval
         clearInterval(Number(loadingScreen.dataset.intervalId));
         loadingScreen.style.display = "none";
+      }
+
+      function showVictoryAnimation() {
+        const battleMoves = document.getElementById("battle-moves");
+        battleMoves.innerHTML = "🎉 Victory! +100 points 🎉";
+      }
+
+      function showDefeatAnimation() {
+        const battleMoves = document.getElementById("battle-moves");
+        battleMoves.innerHTML = "😢 Defeated! 😢";
       }
     </script>
   </body>
