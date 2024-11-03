@@ -139,6 +139,7 @@
           isDragging: false,
           lastX: 0,
           lastY: 0,
+          cellSizeMultiplier: isDemoMode ? 0.085 : 0.04,
         },
         playerId: null,
         otherPlayers: new Map(),
@@ -719,10 +720,9 @@
       function renderMap() {
         const canvas = document.getElementById("map-canvas");
         const ctx = canvas.getContext("2d");
-        // Update cell size calculation to account for demo mode
         const cellSize =
           Math.min(window.innerWidth, window.innerHeight) *
-          (isDemoMode ? 0.085 : 0.04);
+          gameState.viewport.cellSizeMultiplier;
 
         // Reset any transformations
         ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -1511,6 +1511,26 @@
         const battleMoves = document.getElementById("battle-moves");
         battleMoves.innerHTML = "😢 Defeated! 😢";
       }
+
+      gameMap.addEventListener("wheel", (e) => {
+        e.preventDefault(); // Prevent default scroll behavior
+
+        // Determine zoom direction
+        const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+
+        // Calculate new cell size multiplier
+        const newMultiplier =
+          gameState.viewport.cellSizeMultiplier * zoomFactor;
+
+        // Limit the zoom range (adjust these values as needed)
+        const minZoom = 0.02;
+        const maxZoom = 0.15;
+
+        if (newMultiplier >= minZoom && newMultiplier <= maxZoom) {
+          gameState.viewport.cellSizeMultiplier = newMultiplier;
+          renderMap();
+        }
+      });
     </script>
   </body>
 </html>
