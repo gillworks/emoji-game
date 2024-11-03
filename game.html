@@ -91,7 +91,6 @@
     </div>
 
     <script>
-      const MAP_SIZE = 120;
       const TERRAIN_TYPES = {
         FOREST: { emoji: "🌳", encounter: "🐺" },
         MOUNTAIN: { emoji: "🏔️", encounter: "🐆" },
@@ -120,6 +119,8 @@
         otherPlayers: new Map(),
         configs: null,
         serverId: null,
+        mapWidth: 20,
+        mapHeight: 20,
       };
 
       let lastActiveInterval;
@@ -268,13 +269,26 @@
 
       async function loadMap(serverId) {
         try {
-          // Initialize empty map
-          gameState.map = Array(MAP_SIZE)
+          // Get the server's map dimensions
+          const { data: serverData, error: serverError } = await supabaseClient
+            .from("servers")
+            .select("map_width, map_height")
+            .eq("id", serverId)
+            .single();
+
+          if (serverError) throw serverError;
+
+          // Update gameState with the server's map dimensions
+          gameState.mapWidth = serverData.map_width || 20;
+          gameState.mapHeight = serverData.map_height || 20;
+
+          // Initialize empty map with correct dimensions
+          gameState.map = Array(gameState.mapHeight)
             .fill()
-            .map(() => Array(MAP_SIZE).fill(TERRAIN_TYPES.PLAIN));
+            .map(() => Array(gameState.mapWidth).fill(TERRAIN_TYPES.PLAIN));
 
           // Calculate total tiles needed
-          const totalTiles = MAP_SIZE * MAP_SIZE;
+          const totalTiles = gameState.mapWidth * gameState.mapHeight;
           const pageSize = 1000;
           const totalPages = Math.ceil(totalTiles / pageSize);
 
@@ -295,9 +309,9 @@
             mapData.forEach((tile) => {
               if (
                 tile.x >= 0 &&
-                tile.x < MAP_SIZE &&
+                tile.x < gameState.mapWidth &&
                 tile.y >= 0 &&
-                tile.y < MAP_SIZE &&
+                tile.y < gameState.mapHeight &&
                 TERRAIN_TYPES[tile.terrain_type]
               ) {
                 gameState.map[tile.y][tile.x] =
@@ -315,6 +329,18 @@
 
       async function generateAndStoreMap(serverId) {
         try {
+          // Get the server's map dimensions
+          const { data: serverData, error: serverError } = await supabaseClient
+            .from("servers")
+            .select("map_width, map_height")
+            .eq("id", serverId)
+            .single();
+
+          if (serverError) throw serverError;
+
+          const mapWidth = serverData.map_width || 20;
+          const mapHeight = serverData.map_height || 20;
+
           const mapData = [];
           let debug_counts = {
             FOREST: 0,
@@ -323,12 +349,11 @@
             OCEAN: 0,
           };
 
-          for (let y = 0; y < MAP_SIZE; y++) {
-            for (let x = 0; x < MAP_SIZE; x++) {
+          for (let y = 0; y < mapHeight; y++) {
+            for (let x = 0; x < mapWidth; x++) {
               const rand = Math.random();
               let terrainType;
 
-              // Adjust thresholds to ensure better distribution
               if (rand < 0.25) {
                 terrainType = "FOREST";
                 debug_counts.FOREST++;
@@ -713,17 +738,17 @@
         // Reset any transformations
         ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-        // Set canvas size
-        canvas.width = MAP_SIZE * cellSize;
-        canvas.height = MAP_SIZE * cellSize;
+        // Set canvas size using width and height
+        canvas.width = gameState.mapWidth * cellSize;
+        canvas.height = gameState.mapHeight * cellSize;
 
         // Clear canvas with a background color
         ctx.fillStyle = "#2a2a2a";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Draw terrain
-        for (let y = 0; y < MAP_SIZE; y++) {
-          for (let x = 0; x < MAP_SIZE; x++) {
+        // Draw terrain using width and height
+        for (let y = 0; y < gameState.mapHeight; y++) {
+          for (let x = 0; x < gameState.mapWidth; x++) {
             const terrain = gameState.map[y][x];
 
             if (!terrain || !terrain.emoji) continue;
@@ -798,8 +823,8 @@
         const canvas = document.getElementById("map-canvas");
         const cellSize = Math.min(window.innerWidth, window.innerHeight) * 0.04;
 
-        canvas.width = MAP_SIZE * cellSize;
-        canvas.height = MAP_SIZE * cellSize;
+        canvas.width = gameState.mapWidth * cellSize;
+        canvas.height = gameState.mapHeight * cellSize;
       }
 
       function updateStatus() {
@@ -940,6 +965,8 @@
           otherPlayers: new Map(),
           configs: null,
           serverId: null,
+          mapWidth: 20,
+          mapHeight: 20,
         };
         initMap();
         initCanvas();
@@ -995,13 +1022,13 @@
             if (newPos.y > 0) newPos.y--;
             break;
           case "ArrowDown":
-            if (newPos.y < MAP_SIZE - 1) newPos.y++;
+            if (newPos.y < gameState.mapHeight - 1) newPos.y++;
             break;
           case "ArrowLeft":
             if (newPos.x > 0) newPos.x--;
             break;
           case "ArrowRight":
-            if (newPos.x < MAP_SIZE - 1) newPos.x++;
+            if (newPos.x < gameState.mapWidth - 1) newPos.x++;
             break;
           default:
             return;
@@ -1184,6 +1211,8 @@
             otherPlayers: new Map(),
             configs: null,
             serverId: null,
+            mapWidth: 20,
+            mapHeight: 20,
           };
 
           hideLoadingScreen();

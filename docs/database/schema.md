@@ -61,6 +61,8 @@ Manages game server instances
 | last_active | timestamp | Last activity timestamp |
 | max_players | integer | Maximum allowed players |
 | current_players | integer | Current player count |
+| map_width | integer | Width of the server's map (default: 20) |
+| map_height | integer | Height of the server's map (default: 20) |
 
 ### map_data
 
