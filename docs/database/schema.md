@@ -18,8 +18,8 @@ Stores player information
 Stores current position of players on the map
 | Column | Type | Description |
 |--------|------|-------------|
-| player_id | uuid | Foreign key to players.id |
-| server_id | uuid | Foreign key to servers.id |
+| player_id | uuid | Part of composite primary key, foreign key to players.id |
+| server_id | uuid | Part of composite primary key, foreign key to servers.id |
 | x | integer | X coordinate on game map |
 | y | integer | Y coordinate on game map |
 | updated_at | timestamp | Last update timestamp |
@@ -61,7 +61,6 @@ Manages game server instances
 | created_at | timestamp | When server was created |
 | last_active | timestamp | Last activity timestamp |
 | max_players | integer | Maximum allowed players |
-| current_players | integer | Current player count |
 | map_width | integer | Width of the server's map (default: 20) |
 | map_height | integer | Height of the server's map (default: 20) |
 
@@ -95,9 +94,10 @@ All tables have RLS enabled with appropriate policies:
 
 ### player_positions
 
+- Players can insert their own position
 - Players can update their own position
+- Players can delete their own position
 - All authenticated users can view positions
-- Positions are scoped to specific servers
 
 ### game_configs
 
@@ -121,29 +121,31 @@ All tables have RLS enabled with appropriate policies:
 
 ## Stored Procedures
 
-### increment_server_players(server_id UUID)
+### cleanup_player(player_id UUID, server_id UUID)
 
-Increments the player count for a server and updates last_active timestamp
+Removes a player's data from a server:
 
-### decrement_server_players(server_id UUID)
+- Deletes their position from player_positions
+- Removes them from server_players
 
-Decrements the player count for a server and updates last_active timestamp
+### handle_cleanup_request()
 
-### cleanup_inactive_servers()
+API endpoint for cleanup_player that uses the authenticated user's ID
 
-Automated cleanup of inactive servers and their associated data
+## Indexes
+
+The following indexes improve query performance:
+
+- idx_player_positions_player_server on player_positions(player_id, server_id)
+- idx_player_positions_server on player_positions(server_id)
+- idx_server_players_server on server_players(server_id)
+- idx_server_players_combined on server_players(server_id, player_id)
 
 ## Realtime Subscriptions
 
 The following tables have realtime enabled:
 
 - player_positions (for live player movement, filtered by server_id)
-
-## Indexes
-
-The following indexes improve query performance:
-
-- idx_player_positions_server on player_positions(server_id)
 
 ## Initial Data
 

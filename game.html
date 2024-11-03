@@ -356,7 +356,8 @@
             });
           }
 
-          renderMap();
+          // Don't call renderMap here anymore
+          // renderMap();
         } catch (error) {
           console.error("Error loading map:", error);
           throw error;
@@ -515,75 +516,6 @@
           const serverId = await findOrCreateServer();
           gameState.serverId = serverId;
           console.log("Server ID set:", gameState.serverId);
-
-          // Now handle positions with server_id
-          const { data: positionData, error: positionError } =
-            await supabaseClient
-              .from("player_positions")
-              .select("x, y, server_id")
-              .eq("player_id", gameState.playerId)
-              .single();
-
-          // Set initial position
-          gameState.playerPos = positionData || { x: 60, y: 60 };
-
-          // Update/insert position with server_id
-          const { error: posError } = await supabaseClient
-            .from("player_positions")
-            .upsert({
-              player_id: gameState.playerId,
-              server_id: gameState.serverId,
-              x: gameState.playerPos.x,
-              y: gameState.playerPos.y,
-            });
-
-          if (posError) {
-            console.error("Position update error:", posError);
-            throw posError;
-          }
-
-          // Set up realtime subscription
-          const channel = supabaseClient
-            .channel(`server-${gameState.serverId}`)
-            .on(
-              "postgres_changes",
-              {
-                event: "*",
-                schema: "public",
-                table: "player_positions",
-                filter: `server_id=eq.${gameState.serverId}`,
-              },
-              (payload) => {
-                if (
-                  payload.new &&
-                  payload.new.player_id !== gameState.playerId
-                ) {
-                  gameState.otherPlayers.set(payload.new.player_id, {
-                    x: payload.new.x,
-                    y: payload.new.y,
-                  });
-                  renderMap();
-                }
-              }
-            )
-            .subscribe();
-
-          // Load other players' positions
-          const { data: otherPositions } = await supabaseClient
-            .from("player_positions")
-            .select("player_id, x, y")
-            .eq("server_id", gameState.serverId)
-            .neq("player_id", gameState.playerId);
-
-          if (otherPositions) {
-            otherPositions.forEach((pos) => {
-              gameState.otherPlayers.set(pos.player_id, {
-                x: pos.x,
-                y: pos.y,
-              });
-            });
-            console.log("Loaded other players:", gameState.otherPlayers);
-          }
 
           return true;
         } catch (error) {
@@ -760,25 +692,21 @@
         ctx.fillStyle = "#2a2a2a";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Draw terrain using width and height
+        // Draw terrain
         for (let y = 0; y < gameState.mapHeight; y++) {
           for (let x = 0; x < gameState.mapWidth; x++) {
             const terrain = gameState.map[y][x];
-
             if (!terrain || !terrain.emoji) continue;
 
-            // Calculate position
-            const posX = x * cellSize + cellSize / 2;
-            const posY = y * cellSize + cellSize / 2;
-
-            // Set text properties for each emoji
             ctx.font = `${cellSize * 0.6}px Arial`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillStyle = "white";
-
-            // Draw the emoji
-            ctx.fillText(terrain.emoji, posX, posY);
+            ctx.fillText(
+              terrain.emoji,
+              x * cellSize + cellSize / 2,
+              y * cellSize + cellSize / 2
+            );
           }
         }
 
@@ -799,9 +727,11 @@
             gameState.playerPos.x * cellSize + cellSize / 2,
             gameState.playerPos.y * cellSize + cellSize / 2
           );
+        } else {
+          console.warn("No player position available for rendering");
         }
 
-        // Apply viewport transform to canvas style
+        // Apply viewport transform
         canvas.style.transform = `translate(${gameState.viewport.x}px, ${gameState.viewport.y}px) scale(${gameState.viewport.scale})`;
       }
 
@@ -1166,13 +1096,161 @@
             .eq("id", gameState.playerId)
             .single();
 
+          console.log(
+            "Player data:",
+            playerData,
+            "Player ID:",
+            gameState.playerId
+          );
+
           if (!playerError && playerData) {
             document.getElementById("player-username").textContent =
               playerData.username;
           }
 
           await fetchGameConfigs();
+
+          // Find or create server should be called before checking positions
+          const serverId = await findOrCreateServer();
+          gameState.serverId = serverId;
+          console.log("Server ID set:", gameState.serverId);
+
           await loadMap(gameState.serverId);
+
+          // Debug log before position check
+          console.log(
+            "Checking position for player:",
+            gameState.playerId,
+            "on server:",
+            gameState.serverId
+          );
+
+          // Create initial player position if none exists
+          const { data: existingPos, error: posQueryError } =
+            await supabaseClient
+              .from("player_positions")
+              .select("x, y")
+              .eq("player_id", gameState.playerId)
+              .eq("server_id", gameState.serverId)
+              .maybeSingle();
+
+          console.log(
+            "Position query result:",
+            existingPos,
+            "Error:",
+            posQueryError
+          );
+
+          if (existingPos) {
+            console.log("Found existing position:", existingPos);
+            gameState.playerPos = existingPos;
+          } else {
+            console.log("No existing position found, creating new position");
+            // Set initial position to center of map
+            const newPosition = {
+              x: Math.floor(gameState.mapWidth / 2),
+              y: Math.floor(gameState.mapHeight / 2),
+            };
+
+            console.log("Attempting to create position:", {
+              player_id: gameState.playerId,
+              server_id: gameState.serverId,
+              ...newPosition,
+            });
+
+            // Insert new position
+            const { data: newPos, error: posError } = await supabaseClient
+              .from("player_positions")
+              .insert([
+                {
+                  player_id: gameState.playerId,
+                  server_id: gameState.serverId,
+                  x: newPosition.x,
+                  y: newPosition.y,
+                },
+              ])
+              .select()
+              .single();
+
+            if (posError) {
+              console.error("Error creating initial position:", posError);
+              console.error("Attempted values:", {
+                player_id: gameState.playerId,
+                server_id: gameState.serverId,
+                x: newPosition.x,
+                y: newPosition.y,
+              });
+              throw posError;
+            } else {
+              console.log("Successfully created new position:", newPos);
+              gameState.playerPos = newPosition;
+            }
+          }
+
+          console.log("Final gameState.playerPos:", gameState.playerPos);
+
+          // Subscribe to other players' positions
+          const subscription = supabaseClient
+            .channel("player_positions")
+            .on(
+              "postgres_changes",
+              {
+                event: "*", // This catches all events, but we need to handle them specifically
+                schema: "public",
+                table: "player_positions",
+                filter: `server_id=eq.${gameState.serverId}`,
+              },
+              async (payload) => {
+                console.log(
+                  "Position change event:",
+                  payload.eventType,
+                  payload
+                );
+
+                if (
+                  payload.eventType === "INSERT" ||
+                  payload.eventType === "UPDATE"
+                ) {
+                  if (
+                    payload.new &&
+                    payload.new.player_id !== gameState.playerId
+                  ) {
+                    // Update or add other player position
+                    gameState.otherPlayers.set(payload.new.player_id, {
+                      x: payload.new.x,
+                      y: payload.new.y,
+                    });
+                    renderMap();
+                  }
+                } else if (payload.eventType === "DELETE") {
+                  if (
+                    payload.old &&
+                    payload.old.player_id !== gameState.playerId
+                  ) {
+                    // Remove player who left
+                    gameState.otherPlayers.delete(payload.old.player_id);
+                    renderMap();
+                  }
+                }
+              }
+            )
+            .subscribe();
+
+          // Load initial positions of other players
+          const { data: otherPositions } = await supabaseClient
+            .from("player_positions")
+            .select("player_id, x, y")
+            .eq("server_id", gameState.serverId)
+            .neq("player_id", gameState.playerId);
+
+          // Initialize other players' positions
+          gameState.otherPlayers.clear();
+          if (otherPositions) {
+            otherPositions.forEach((pos) => {
+              gameState.otherPlayers.set(pos.player_id, { x: pos.x, y: pos.y });
+            });
+          }
+
           initCanvas();
           renderMap();
           updateStatus();
@@ -1194,47 +1272,87 @@
         renderMap();
       });
 
-      // Add cleanup function for when player leaves
+      // Add a flag to prevent double cleanup
+      let isCleaningUp = false;
+
       async function leaveServer() {
-        if (!gameState.serverId) return;
+        if (!gameState.serverId || isCleaningUp) {
+          console.log(
+            "Skipping leaveServer - already cleaning up or no server ID"
+          );
+          return;
+        }
+
+        isCleaningUp = true;
 
         if (lastActiveInterval) {
           clearInterval(lastActiveInterval);
         }
 
         try {
+          console.log("Starting leaveServer process...");
+
+          // Remove all realtime subscriptions
+          await supabaseClient.channel("player_positions").unsubscribe();
+
           // Get current session
           const {
             data: { session },
           } = await supabaseClient.auth.getSession();
           if (!session) {
-            console.error("No active session");
+            console.error("No active session in leaveServer");
             return;
           }
 
-          // Only call decrement_server_players to update last_active
-          await supabaseClient.rpc("decrement_server_players", {
-            server_id: gameState.serverId,
-          });
+          // Delete player position directly
+          const { error: positionError } = await supabaseClient
+            .from("player_positions")
+            .delete()
+            .eq("player_id", gameState.playerId)
+            .eq("server_id", gameState.serverId);
 
-          // Remove the DELETE request to server_players - we want to preserve the record
+          if (positionError) {
+            console.error("Error removing player position:", positionError);
+          } else {
+            console.log("Successfully deleted position");
+          }
+
+          // Delete server_players entry
+          const { error: serverPlayerError } = await supabaseClient
+            .from("server_players")
+            .delete()
+            .eq("player_id", gameState.playerId)
+            .eq("server_id", gameState.serverId);
+
+          if (serverPlayerError) {
+            console.error("Error removing server player:", serverPlayerError);
+          }
+
+          console.log("Completed leaveServer process");
         } catch (error) {
-          console.error("Error leaving server:", error);
+          console.error("Error in leaveServer:", error);
+        } finally {
+          isCleaningUp = false;
         }
       }
 
-      // Replace this event listener
-      window.addEventListener("beforeunload", () => {
+      // Update event listeners to handle synchronously
+      window.addEventListener("beforeunload", (event) => {
+        console.log("beforeunload triggered");
+        // Call leaveServer synchronously
         leaveServer();
       });
 
-      // Also add cleanup on page hide
-      window.addEventListener("pagehide", leaveServer);
+      window.addEventListener("pagehide", () => {
+        console.log("pagehide triggered");
+        // Call leaveServer synchronously
+        leaveServer();
+      });
 
-      // Add cleanup on visibility change to hidden
+      // Keep visibility change for debugging but don't call leaveServer
       document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "hidden") {
-          leaveServer();
+          console.log("Page hidden - not calling leaveServer");
         }
       });
 
@@ -1293,7 +1411,7 @@
       const LOADING_MESSAGES = [
         { emoji: "🌳", message: "Growing the forest..." },
         { emoji: "🏔️", message: "Moving mountains..." },
-        { emoji: "��", message: "Planting the plains..." },
+        { emoji: "", message: "Planting the plains..." },
         { emoji: "🌊", message: "Filling the oceans..." },
         { emoji: "🦊", message: "Gathering the players..." },
         { emoji: "🐻", message: "Preparing your character..." },
