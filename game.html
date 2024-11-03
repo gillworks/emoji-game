@@ -69,9 +69,9 @@
             <span class="key-indicator">F</span>
             Fight
           </button>
-          <button class="battle-option" onclick="chooseBattle('flee')">
+          <button class="battle-option" onclick="chooseBattle('run')">
             <span class="key-indicator">R</span>
-            Flee
+            Run
           </button>
         </div>
         <div id="attack-options" style="display: none">
@@ -1006,7 +1006,7 @@
               chooseBattle("fight");
               break;
             case "r":
-              chooseBattle("flee");
+              chooseBattle("run");
               break;
             case "1":
               if (
