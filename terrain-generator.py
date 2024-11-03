@@ -135,8 +135,7 @@ class TerrainGenerator:
             'status': 'active',
             'created_at': datetime.utcnow().isoformat(),
             'last_active': datetime.utcnow().isoformat(),
-            'max_players': max_players,
-            'current_players': 0
+            'max_players': max_players
         }
         
         # Insert server record

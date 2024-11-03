@@ -181,39 +181,47 @@
 
       async function findOrCreateServer() {
         try {
-          // First check if player is already in a server
-          const { data: existingServer, error: existingError } =
+          // First check if player is already in a server using two separate queries
+          const { data: playerServer, error: playerError } =
             await supabaseClient
               .from("server_players")
-              .select("server_id, servers!inner(*)")
+              .select("server_id")
               .eq("player_id", gameState.playerId)
               .single();
 
-          if (!existingError && existingServer) {
-            // Player is already in a server, check if it's still active
-            if (existingServer.servers.status === "active") {
-              console.log(
-                "Rejoining existing server:",
-                existingServer.server_id
-              );
+          if (!playerError && playerServer) {
+            // Get server details
+            const { data: serverDetails, error: serverError } =
+              await supabaseClient
+                .from("servers")
+                .select("*")
+                .eq("id", playerServer.server_id)
+                .single();
+
+            if (
+              !serverError &&
+              serverDetails &&
+              serverDetails.status === "active"
+            ) {
+              console.log("Rejoining existing server:", playerServer.server_id);
 
               // Call increment_server_players to ensure count is correct
               await supabaseClient.rpc("increment_server_players", {
-                server_id: existingServer.server_id,
+                server_id: playerServer.server_id,
               });
 
-              gameState.serverId = existingServer.server_id;
-              return existingServer.server_id;
+              gameState.serverId = playerServer.server_id;
+              return playerServer.server_id;
             } else {
-              // Server is inactive, remove player from it
+              // Server is inactive or doesn't exist, remove player from it
               await supabaseClient.from("server_players").delete().match({
-                server_id: existingServer.server_id,
+                server_id: playerServer.server_id,
                 player_id: gameState.playerId,
               });
             }
           }
 
-          // Look for an active server with space
+          // Rest of the function remains the same
           const { data: servers, error: serverError } = await supabaseClient
             .from("servers")
             .select("*")
@@ -239,7 +247,6 @@
                   name: `Server ${Math.floor(Math.random() * 1000)}`,
                   status: "active",
                   max_players: 100,
-                  current_players: 0,
                 },
               ])
               .select()
@@ -256,7 +263,12 @@
           // Join server
           const { error: joinError } = await supabaseClient
             .from("server_players")
-            .upsert([{ server_id: serverId, player_id: gameState.playerId }]);
+            .upsert([
+              {
+                server_id: serverId,
+                player_id: gameState.playerId,
+              },
+            ]);
 
           if (joinError) throw joinError;
 
@@ -997,6 +1009,7 @@
       });
 
       document.addEventListener("keydown", async (e) => {
+        if (!e || !e.key) return;
         const key = e.key.toLowerCase();
 
         if (gameState.inBattle) {
@@ -1037,6 +1050,9 @@
           }
           return;
         }
+
+        // Only process movement if player position exists
+        if (!gameState.playerPos) return;
 
         // Movement controls (when not in battle)
         const newPos = { ...gameState.playerPos };
