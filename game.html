@@ -54,6 +54,7 @@
           Position: (<span id="position-x">-</span>,
           <span id="position-y">-</span>)
         </div>
+        <div>Player: <span id="player-username">-</span></div>
         <div>
           <button onclick="handleLogout()" class="logout-button">Logout</button>
         </div>
@@ -1049,6 +1050,18 @@
             return;
           }
 
+          // Get player username and update display
+          const { data: playerData, error: playerError } = await supabaseClient
+            .from("players")
+            .select("username")
+            .eq("id", gameState.playerId)
+            .single();
+
+          if (!playerError && playerData) {
+            document.getElementById("player-username").textContent =
+              playerData.username;
+          }
+
           await fetchGameConfigs();
           await loadMap(gameState.serverId);
           initCanvas();
@@ -1192,6 +1205,9 @@
             mapWidth: 20,
             mapHeight: 20,
           };
+
+          // Reset username display
+          document.getElementById("player-username").textContent = "-";
 
           hideLoadingScreen();
           // Show auth screen
