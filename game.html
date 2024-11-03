@@ -909,6 +909,9 @@
       }
 
       function chooseAttack(playerChoice) {
+        // Prevent attacks if battle is ending
+        if (!gameState.inBattle) return;
+
         const choices = ["quick", "heavy", "block"];
         const enemyChoice = choices[Math.floor(Math.random() * choices.length)];
 
@@ -931,17 +934,17 @@
         ) {
           gameState.playerHits++;
           result = "✨";
-          // Update enemy hearts
+          // Update enemy hearts (ensure non-negative value)
           const hearts = document.getElementById("enemy-hearts");
-          hearts.innerHTML = "❤️".repeat(3 - gameState.playerHits);
+          hearts.innerHTML = "❤️".repeat(Math.max(0, 3 - gameState.playerHits));
         } else if (playerChoice === enemyChoice) {
           result = "🤜🤛";
         } else {
           gameState.enemyHits++;
           result = "💥";
-          // Update player hearts
+          // Update player hearts (ensure non-negative value)
           const hearts = document.getElementById("player-hearts");
-          hearts.innerHTML = "❤️".repeat(3 - gameState.enemyHits);
+          hearts.innerHTML = "❤️".repeat(Math.max(0, 3 - gameState.enemyHits));
         }
 
         // Show hit animation
@@ -959,6 +962,12 @@
         }, 1000);
 
         if (gameState.playerHits >= 3) {
+          // Disable further attacks
+          gameState.inBattle = false;
+          // Disable attack buttons
+          const attackButtons = document.querySelectorAll(".battle-option");
+          attackButtons.forEach((button) => (button.disabled = true));
+
           gameState.score += 100;
           updateStatus();
           setTimeout(() => {
@@ -966,6 +975,14 @@
             setTimeout(endBattle, 1500);
           }, 1000);
         } else if (gameState.enemyHits >= 3) {
+          // Disable further attacks
+          gameState.inBattle = false;
+          // Disable attack buttons
+          const attackButtons = document.querySelectorAll(".battle-option");
+          attackButtons.forEach((button) => (button.disabled = true));
+
+          gameState.health -= 30;
+          updateStatus();
           setTimeout(() => {
             showDefeatAnimation();
             setTimeout(endBattle, 1500);
@@ -982,6 +999,11 @@
         gameState.currentEnemy = null;
         gameState.playerHits = 0;
         gameState.enemyHits = 0;
+
+        // Re-enable all battle buttons
+        const battleButtons = document.querySelectorAll(".battle-option");
+        battleButtons.forEach((button) => (button.disabled = false));
+
         document.getElementById("battle-screen").style.display = "none";
       }
 
