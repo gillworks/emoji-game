@@ -1013,36 +1013,7 @@
       }
 
       function restartGame() {
-        gameState = {
-          map: [],
-          playerPos: { x: 60, y: 60 },
-          health: 100,
-          score: 0,
-          inBattle: false,
-          currentEnemy: null,
-          playerHits: 0,
-          enemyHits: 0,
-          viewport: {
-            x: 0,
-            y: 0,
-            scale: 1,
-            isDragging: false,
-            lastX: 0,
-            lastY: 0,
-          },
-          playerId: gameState.playerId,
-          otherPlayers: new Map(),
-          configs: null,
-          serverId: null,
-          mapWidth: 20,
-          mapHeight: 20,
-        };
-        initMap();
-        initCanvas();
-        renderMap();
-        updateStatus();
-        document.getElementById("game-over").style.display = "none";
-        document.getElementById("battle-screen").style.display = "none";
+        window.location.reload();
       }
 
       // Pan handling
@@ -1322,7 +1293,7 @@
       const LOADING_MESSAGES = [
         { emoji: "🌳", message: "Growing the forest..." },
         { emoji: "🏔️", message: "Moving mountains..." },
-        { emoji: "🌱", message: "Planting the plains..." },
+        { emoji: "��", message: "Planting the plains..." },
         { emoji: "🌊", message: "Filling the oceans..." },
         { emoji: "🦊", message: "Gathering the players..." },
         { emoji: "🐻", message: "Preparing your character..." },
