@@ -336,7 +336,10 @@
                 table: "player_positions",
               },
               (payload) => {
-                if (payload.new.player_id !== gameState.playerId) {
+                if (
+                  payload.new &&
+                  payload.new.player_id !== gameState.playerId
+                ) {
                   gameState.otherPlayers.set(payload.new.player_id, {
                     x: payload.new.x,
                     y: payload.new.y,
@@ -363,6 +366,23 @@
             throw posError;
           }
           console.log("Initial position set:", posData);
+
+          // Also fetch initial positions of other players
+          const { data: otherPositions, error: otherPositionsError } =
+            await supabaseClient
+              .from("player_positions")
+              .select("*")
+              .neq("player_id", gameState.playerId);
+
+          if (!otherPositionsError && otherPositions) {
+            otherPositions.forEach((pos) => {
+              gameState.otherPlayers.set(pos.player_id, {
+                x: pos.x,
+                y: pos.y,
+              });
+            });
+            console.log("Loaded other players:", gameState.otherPlayers);
+          }
         } catch (error) {
           console.error("Error initializing Supabase:", error);
         }
@@ -371,7 +391,7 @@
       function renderMap() {
         const canvas = document.getElementById("map-canvas");
         const ctx = canvas.getContext("2d");
-        const cellSize = Math.min(window.innerWidth, window.innerHeight) * 0.04; // Matches the CSS min(4vw, 4vh)
+        const cellSize = Math.min(window.innerWidth, window.innerHeight) * 0.04;
 
         // Set canvas size
         canvas.width = MAP_SIZE * cellSize;
@@ -383,7 +403,7 @@
         // Draw terrain
         for (let y = 0; y < MAP_SIZE; y++) {
           for (let x = 0; x < MAP_SIZE; x++) {
-            ctx.font = `${cellSize * 0.6}px Arial`; // Slightly smaller than cell size
+            ctx.font = `${cellSize * 0.6}px Arial`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
 
@@ -393,30 +413,28 @@
               x * cellSize + cellSize / 2,
               y * cellSize + cellSize / 2
             );
-
-            // Draw player
-            if (x === gameState.playerPos.x && y === gameState.playerPos.y) {
-              ctx.fillText(
-                "🐻",
-                x * cellSize + cellSize / 2,
-                y * cellSize + cellSize / 2
-              );
-            }
-
-            // Add this to draw other players
-            gameState.otherPlayers.forEach((pos) => {
-              if (x === pos.x && y === pos.y) {
-                ctx.fillText(
-                  "🦊", // Different emoji for other players
-                  x * cellSize + cellSize / 2,
-                  y * cellSize + cellSize / 2
-                );
-              }
-            });
           }
         }
 
-        // Apply viewport transform to the canvas element
+        // Draw other players first
+        gameState.otherPlayers.forEach((pos) => {
+          ctx.fillText(
+            "🦊",
+            pos.x * cellSize + cellSize / 2,
+            pos.y * cellSize + cellSize / 2
+          );
+        });
+
+        // Draw main player last (so it appears on top)
+        if (gameState.playerPos) {
+          ctx.fillText(
+            "🐻",
+            gameState.playerPos.x * cellSize + cellSize / 2,
+            gameState.playerPos.y * cellSize + cellSize / 2
+          );
+        }
+
+        // Apply viewport transform
         canvas.style.transform = `translate(${gameState.viewport.x}px, ${gameState.viewport.y}px) scale(${gameState.viewport.scale})`;
       }
 
