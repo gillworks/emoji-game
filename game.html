@@ -819,8 +819,13 @@
           document.getElementById("battle-moves").innerHTML =
             "Choose your attack!";
         } else {
+          // Disable battle options immediately to prevent multiple runs
+          const battleOptions = document.querySelectorAll(".battle-option");
+          battleOptions.forEach((button) => (button.disabled = true));
+
           if (Math.random() < 0.6) {
             // Successful escape
+            gameState.inBattle = false; // Set this immediately to prevent further battle actions
             const battleMoves = document.getElementById("battle-moves");
             battleMoves.innerHTML = "🏃 Got away safely!";
             setTimeout(endBattle, 1500);
@@ -830,6 +835,9 @@
             updateStatus();
             const battleMoves = document.getElementById("battle-moves");
             battleMoves.innerHTML = "😰 Couldn't escape! -10 health!";
+
+            // Re-enable battle options only if escape failed
+            battleOptions.forEach((button) => (button.disabled = false));
 
             if (gameState.health <= 0) {
               gameOver();
