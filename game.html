@@ -120,9 +120,101 @@
         border-radius: 5px;
         color: white;
       }
+
+      #auth-screen {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.9);
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        z-index: 1000;
+      }
+
+      .auth-form {
+        background: #333;
+        padding: 20px;
+        border-radius: 10px;
+        min-width: 300px;
+      }
+
+      .auth-form input {
+        width: 100%;
+        padding: 8px;
+        margin: 10px 0;
+        border: none;
+        border-radius: 5px;
+        background: #4a4a4a;
+        color: white;
+      }
+
+      .auth-form button {
+        width: 100%;
+        padding: 10px;
+        margin: 10px 0;
+        border: none;
+        border-radius: 5px;
+        background: #4caf50;
+        color: white;
+        cursor: pointer;
+      }
+
+      .auth-form button:hover {
+        background: #45a049;
+      }
+
+      .auth-error {
+        color: #ff6b6b;
+        margin: 10px 0;
+        display: none;
+      }
+
+      .auth-toggle {
+        color: #4caf50;
+        cursor: pointer;
+        margin-top: 10px;
+      }
+
+      .logout-button {
+        padding: 5px 10px;
+        background: #ff6b6b;
+        border: none;
+        border-radius: 5px;
+        color: white;
+        cursor: pointer;
+        font-size: 14px;
+      }
+
+      .logout-button:hover {
+        background: #ff5252;
+      }
     </style>
   </head>
   <body>
+    <div id="auth-screen">
+      <div class="auth-form">
+        <h2 id="auth-title">Login</h2>
+        <div id="auth-error" class="auth-error"></div>
+        <form id="auth-form" onsubmit="handleAuth(event)">
+          <input type="email" id="auth-email" placeholder="Email" />
+          <input type="password" id="auth-password" placeholder="Password" />
+          <button type="submit">Submit</button>
+          <p>
+            <span
+              id="auth-toggle"
+              class="auth-toggle"
+              onclick="toggleAuthMode()"
+            >
+              Create an account instead
+            </span>
+          </p>
+        </form>
+      </div>
+    </div>
     <div id="game-container">
       <div id="status-bar">
         <div>Health: <span id="health">100</span></div>
@@ -130,6 +222,9 @@
         <div>
           Position: (<span id="position-x">-</span>,
           <span id="position-y">-</span>)
+        </div>
+        <div>
+          <button onclick="handleLogout()" class="logout-button">Logout</button>
         </div>
       </div>
       <div id="game-map">
@@ -459,44 +554,48 @@
         }
       }
 
+      let isRegistering = false;
+
       async function initSupabase() {
         try {
           console.log("Initializing Supabase...");
 
-          const {
-            data: { session },
-            error: sessionError,
-          } = await supabaseClient.auth.getSession();
-          console.log("Session check:", session, sessionError);
+          // Add retry mechanism for getting session
+          let session;
+          let retries = 3;
+          while (retries > 0) {
+            const { data: sessionData, error: sessionError } =
+              await supabaseClient.auth.getSession();
+
+            if (sessionError) {
+              console.error("Session error:", sessionError);
+              throw sessionError;
+            }
+
+            if (sessionData?.session?.access_token) {
+              session = sessionData.session;
+              break;
+            }
+
+            console.log(`Waiting for session... (${retries} retries left)`);
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            retries--;
+          }
 
           if (!session) {
-            console.log("No session, using magic link...");
-            const email = prompt("Enter your email to play:", "");
-            if (!email) {
-              throw new Error("Email is required to play");
-            }
-
-            const { data, error } = await supabaseClient.auth.signInWithOtp({
-              email: email,
-              options: {
-                emailRedirectTo: window.location.href,
-              },
-            });
-
-            if (error) {
-              console.error("Sign in error:", error);
-              throw error;
-            }
-
-            alert("Check your email for the login link!");
-            console.log("Magic link sent:", data);
-            return;
+            console.log("No session, showing login/signup form...");
+            showAuthScreen();
+            return false;
           }
+
+          // Add small delay after getting session
+          await new Promise((resolve) => setTimeout(resolve, 500));
 
           const {
             data: { user },
             error: userError,
           } = await supabaseClient.auth.getUser();
+
           if (userError) {
             console.error("Get user error:", userError);
             throw userError;
@@ -505,18 +604,29 @@
           gameState.playerId = user.id;
           console.log("Player ID set:", gameState.playerId);
 
-          // Load player position before creating/updating player record
-          const { data: positionData, error: positionError } =
-            await supabaseClient
+          // Add retry mechanism for position fetch
+          let positionData;
+          retries = 3;
+          while (retries > 0) {
+            const { data, error } = await supabaseClient
               .from("player_positions")
               .select("x, y")
               .eq("player_id", gameState.playerId)
               .single();
 
-          if (positionError && positionError.code !== "PGRST116") {
-            // PGRST116 is "no rows returned"
-            console.error("Position fetch error:", positionError);
-            throw positionError;
+            if (error && error.code !== "PGRST116") {
+              if (retries === 1) {
+                console.error("Position fetch error:", error);
+                throw error;
+              }
+            } else {
+              positionData = data;
+              break;
+            }
+
+            console.log(`Retrying position fetch... (${retries} retries left)`);
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            retries--;
           }
 
           // Set position from database or use default
@@ -604,8 +714,163 @@
             });
             console.log("Loaded other players:", gameState.otherPlayers);
           }
+
+          return true;
         } catch (error) {
           console.error("Error initializing Supabase:", error);
+          showAuthScreen();
+          return false;
+        }
+      }
+
+      function showAuthScreen() {
+        document.getElementById("auth-screen").style.display = "flex";
+        document.getElementById("game-container").style.display = "none";
+      }
+
+      function hideAuthScreen() {
+        document.getElementById("auth-screen").style.display = "none";
+        document.getElementById("game-container").style.display = "flex";
+      }
+
+      function toggleAuthMode() {
+        isRegistering = !isRegistering;
+        const title = document.getElementById("auth-title");
+        const toggle = document.getElementById("auth-toggle");
+        const error = document.getElementById("auth-error");
+        const submitButton = document.querySelector(
+          '.auth-form button[type="submit"]'
+        );
+
+        title.textContent = isRegistering ? "Create Account" : "Login";
+        toggle.textContent = isRegistering
+          ? "Login instead"
+          : "Create an account instead";
+        error.style.display = "none";
+
+        // Reset button state
+        submitButton.disabled = false;
+        submitButton.textContent = "Submit";
+
+        // Clear the form
+        document.getElementById("auth-form").reset();
+      }
+
+      function validateCredentials(email, password) {
+        const errorDiv = document.getElementById("auth-error");
+
+        if (!email || !password) {
+          errorDiv.style.color = "#ff6b6b";
+          errorDiv.style.display = "block";
+          errorDiv.textContent = "Email and password are required";
+          return false;
+        }
+
+        if (password.length < 6) {
+          errorDiv.style.color = "#ff6b6b";
+          errorDiv.style.display = "block";
+          errorDiv.textContent = "Password must be at least 6 characters long";
+          return false;
+        }
+
+        if (!email.includes("@")) {
+          errorDiv.style.color = "#ff6b6b";
+          errorDiv.style.display = "block";
+          errorDiv.textContent = "Please enter a valid email address";
+          return false;
+        }
+
+        return true;
+      }
+
+      async function handleAuth(event) {
+        event.preventDefault();
+
+        const email = document.getElementById("auth-email").value;
+        const password = document.getElementById("auth-password").value;
+
+        if (!validateCredentials(email, password)) {
+          return;
+        }
+
+        const errorDiv = document.getElementById("auth-error");
+        const submitButton = document.querySelector(
+          '.auth-form button[type="submit"]'
+        );
+
+        // Disable the submit button and show loading state
+        submitButton.disabled = true;
+        submitButton.textContent = "Loading...";
+        errorDiv.style.display = "none";
+
+        try {
+          if (isRegistering) {
+            console.log("Attempting registration...");
+            const { data, error } = await supabaseClient.auth.signUp({
+              email,
+              password,
+            });
+
+            console.log("Registration response:", { data, error });
+
+            if (error) throw error;
+            if (!data?.user)
+              throw new Error("Registration failed - no user data returned");
+
+            // Check if we got a session (email confirmation disabled)
+            if (data.session) {
+              console.log("Email confirmation disabled - proceeding to game");
+              hideAuthScreen();
+              initGame();
+              return;
+            }
+
+            // If no session, email confirmation is required
+            errorDiv.style.display = "block";
+            errorDiv.style.color = "#4caf50";
+            errorDiv.textContent = `Registration successful! Please check your email (${email}) and click the confirmation link before logging in.`;
+
+            // Clear form but stay on registration screen
+            document.getElementById("auth-form").reset();
+
+            // Switch to login mode since they'll need to login after confirming
+            isRegistering = false;
+            toggleAuthMode();
+            return;
+          } else {
+            console.log("Attempting login...");
+            const { data, error } =
+              await supabaseClient.auth.signInWithPassword({
+                email,
+                password,
+              });
+
+            console.log("Login response:", { data, error });
+
+            if (error) {
+              if (error.message === "Invalid login credentials") {
+                throw new Error("Invalid email or password. Please try again.");
+              }
+              throw error;
+            }
+
+            if (!data?.session) {
+              throw new Error("Login failed - no session created");
+            }
+
+            hideAuthScreen();
+            initGame();
+          }
+        } catch (error) {
+          console.error("Auth error:", error);
+          errorDiv.style.color = "#ff6b6b";
+          errorDiv.style.display = "block";
+          errorDiv.textContent =
+            error.message || "An error occurred during authentication";
+        } finally {
+          // Re-enable the button
+          submitButton.disabled = false;
+          submitButton.textContent = "Submit";
         }
       }
 
@@ -936,16 +1201,15 @@
         checkEncounter();
       });
 
-      // Simplify initGame since position loading is now handled in initSupabase
+      // Modify initGame to handle auth state
       async function initGame() {
         try {
-          await initSupabase();
-          await fetchGameConfigs();
+          const isAuthenticated = await initSupabase();
+          if (!isAuthenticated) return;
 
-          // Find or create server and load map
+          await fetchGameConfigs();
           const serverId = await findOrCreateServer();
           await loadMap(serverId);
-
           initCanvas();
           renderMap();
           updateStatus();
@@ -1047,6 +1311,46 @@
 
       // Also let's verify our TERRAIN_TYPES constant is correct
       console.log("Available terrain types:", Object.keys(TERRAIN_TYPES));
+
+      async function handleLogout() {
+        try {
+          // Clean up game state
+          await leaveServer();
+
+          // Sign out from Supabase
+          const { error } = await supabaseClient.auth.signOut();
+          if (error) throw error;
+
+          // Reset game state
+          gameState = {
+            map: [],
+            playerPos: null,
+            health: 100,
+            score: 0,
+            inBattle: false,
+            currentEnemy: null,
+            playerHits: 0,
+            enemyHits: 0,
+            viewport: {
+              x: 0,
+              y: 0,
+              scale: 1,
+              isDragging: false,
+              lastX: 0,
+              lastY: 0,
+            },
+            playerId: null,
+            otherPlayers: new Map(),
+            configs: null,
+            serverId: null,
+          };
+
+          // Show auth screen
+          showAuthScreen();
+        } catch (error) {
+          console.error("Error during logout:", error);
+        }
+      }
     </script>
   </body>
 </html>
