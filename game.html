@@ -162,12 +162,7 @@
 
     <script>
       const MAP_SIZE = 120;
-      const TERRAIN_TYPES = {
-        FOREST: { emoji: "🌳", encounter: "🐺" },
-        MOUNTAIN: { emoji: "🏔️", encounter: "🐆" },
-        PLAIN: { emoji: "🌱", encounter: "🦁" },
-        OCEAN: { emoji: "🌊", encounter: "🦈" },
-      };
+      let TERRAIN_TYPES = {};
 
       let gameState = {
         map: [],
@@ -190,15 +185,53 @@
         otherPlayers: new Map(),
       };
 
+      async function loadTerrainTypes() {
+        try {
+          const { data, error } = await supabaseClient
+            .from("terrain_types")
+            .select("*");
+
+          if (error) {
+            console.error("Error loading terrain types:", error);
+            throw error;
+          }
+
+          // Convert array to object format matching current structure
+          TERRAIN_TYPES = data.reduce((acc, type) => {
+            acc[type.id] = {
+              emoji: type.emoji,
+              encounter: type.encounter,
+            };
+            return acc;
+          }, {});
+
+          console.log("Terrain types loaded:", TERRAIN_TYPES);
+        } catch (error) {
+          console.error("Failed to load terrain types:", error);
+          // Fallback to default terrain types if loading fails
+          TERRAIN_TYPES = {
+            FOREST: { emoji: "🌳", encounter: "🐺" },
+            MOUNTAIN: { emoji: "🏔️", encounter: "🐆" },
+            PLAIN: { emoji: "🌱", encounter: "🦁" },
+            OCEAN: { emoji: "🌊", encounter: "🦈" },
+          };
+        }
+      }
+
       function initMap() {
+        const terrainTypeIds = Object.keys(TERRAIN_TYPES);
         for (let y = 0; y < MAP_SIZE; y++) {
           gameState.map[y] = [];
           for (let x = 0; x < MAP_SIZE; x++) {
             const rand = Math.random();
-            if (rand < 0.3) gameState.map[y][x] = TERRAIN_TYPES.FOREST;
-            else if (rand < 0.5) gameState.map[y][x] = TERRAIN_TYPES.MOUNTAIN;
-            else if (rand < 0.8) gameState.map[y][x] = TERRAIN_TYPES.PLAIN;
-            else gameState.map[y][x] = TERRAIN_TYPES.OCEAN;
+            if (rand < 0.3)
+              gameState.map[y][x] = TERRAIN_TYPES[terrainTypeIds[0]]; // FOREST
+            else if (rand < 0.5)
+              gameState.map[y][x] =
+                TERRAIN_TYPES[terrainTypeIds[1]]; // MOUNTAIN
+            else if (rand < 0.8)
+              gameState.map[y][x] = TERRAIN_TYPES[terrainTypeIds[2]]; // PLAIN
+            else gameState.map[y][x] = TERRAIN_TYPES[terrainTypeIds[3]]; // OCEAN
           }
         }
       }
@@ -589,6 +622,7 @@
       // Initialize game
       async function initGame() {
         await initSupabase();
+        await loadTerrainTypes();
         initMap();
         initCanvas();
         renderMap();
