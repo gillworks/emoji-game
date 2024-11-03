@@ -599,6 +599,9 @@
         const submitButton = document.querySelector(
           '.auth-form button[type="submit"]'
         );
+        const authTitle = document.getElementById("auth-title");
+        const authToggle = document.getElementById("auth-toggle");
+        const authForm = document.getElementById("auth-form");
 
         // Disable the submit button and show loading state
         submitButton.disabled = true;
@@ -619,25 +622,24 @@
             if (!data?.user)
               throw new Error("Registration failed - no user data returned");
 
-            // Check if we got a session (email confirmation disabled)
-            if (data.session) {
-              console.log("Email confirmation disabled - proceeding to game");
-              hideAuthScreen();
-              initGame();
-              return;
-            }
+            // Hide the entire form including input fields
+            authForm.style.display = "none";
+            authToggle.style.display = "none";
 
-            // If no session, email confirmation is required
+            // Update title
+            authTitle.textContent = "Check Your Email";
+
+            // Show confirmation message
             errorDiv.style.display = "block";
-            errorDiv.style.color = "#4caf50";
-            errorDiv.textContent = `Registration successful! Please check your email (${email}) and click the confirmation link before logging in.`;
+            errorDiv.style.color = "#4caf50"; // Green color for success
+            errorDiv.innerHTML = `
+                ✉️ Registration successful!<br><br>
+                We've sent a confirmation link to:<br>
+                <strong>${email}</strong><br><br>
+                Please check your email and click the confirmation link to activate your account.<br><br>
+                <button onclick="switchToLogin()" class="auth-form-button">Return to Login</button>
+            `;
 
-            // Clear form but stay on registration screen
-            document.getElementById("auth-form").reset();
-
-            // Switch to login mode since they'll need to login after confirming
-            isRegistering = false;
-            toggleAuthMode();
             return;
           } else {
             console.log("Attempting login...");
@@ -670,10 +672,39 @@
           errorDiv.textContent =
             error.message || "An error occurred during authentication";
         } finally {
-          // Re-enable the button
-          submitButton.disabled = false;
-          submitButton.textContent = "Submit";
+          if (!isRegistering) {
+            // Only reset button if not in registration success state
+            submitButton.disabled = false;
+            submitButton.textContent = "Submit";
+          }
         }
+      }
+
+      // Update the switchToLogin function to show the form again
+      function switchToLogin() {
+        isRegistering = false;
+        const authTitle = document.getElementById("auth-title");
+        const authToggle = document.getElementById("auth-toggle");
+        const submitButton = document.querySelector(
+          '.auth-form button[type="submit"]'
+        );
+        const errorDiv = document.getElementById("auth-error");
+        const authForm = document.getElementById("auth-form");
+
+        // Show the form again
+        authForm.style.display = "block";
+
+        // Reset the form display
+        authTitle.textContent = "Login";
+        authToggle.style.display = "block";
+        authToggle.textContent = "Create an account instead";
+        submitButton.style.display = "block";
+        submitButton.disabled = false;
+        submitButton.textContent = "Submit";
+        errorDiv.style.display = "none";
+
+        // Clear any input values
+        authForm.reset();
       }
 
       function renderMap() {

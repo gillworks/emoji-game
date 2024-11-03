@@ -273,3 +273,18 @@ body {
   margin-top: 10px;
   font-size: 24px;
 }
+
+.auth-form-button {
+  background: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-size: 16px;
+  margin-top: 10px;
+}
+
+.auth-form-button:hover {
+  background: #45a049;
+}
