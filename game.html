@@ -192,6 +192,42 @@
       .logout-button:hover {
         background: #ff5252;
       }
+
+      #loading-screen {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #1a1a1a;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        z-index: 2000;
+      }
+
+      #loading-message {
+        font-size: 24px;
+        margin: 20px;
+        text-align: center;
+      }
+
+      .loading-emoji {
+        font-size: 48px;
+        margin-bottom: 20px;
+        animation: bounce 1s infinite;
+      }
+
+      @keyframes bounce {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-20px);
+        }
+      }
     </style>
   </head>
   <body>
@@ -214,6 +250,10 @@
           </p>
         </form>
       </div>
+    </div>
+    <div id="loading-screen">
+      <div class="loading-emoji">🌳</div>
+      <div id="loading-message">Loading your adventure...</div>
     </div>
     <div id="game-container">
       <div id="status-bar">
@@ -1204,8 +1244,13 @@
       // Modify initGame to handle auth state
       async function initGame() {
         try {
+          showLoadingScreen();
+
           const isAuthenticated = await initSupabase();
-          if (!isAuthenticated) return;
+          if (!isAuthenticated) {
+            hideLoadingScreen();
+            return;
+          }
 
           await fetchGameConfigs();
           const serverId = await findOrCreateServer();
@@ -1214,8 +1259,11 @@
           renderMap();
           updateStatus();
           startLastActiveUpdates();
+
+          hideLoadingScreen();
         } catch (error) {
           console.error("Error initializing game:", error);
+          hideLoadingScreen();
         }
       }
 
@@ -1314,6 +1362,8 @@
 
       async function handleLogout() {
         try {
+          showLoadingScreen();
+
           // Clean up game state
           await leaveServer();
 
@@ -1345,11 +1395,50 @@
             serverId: null,
           };
 
+          hideLoadingScreen();
           // Show auth screen
           showAuthScreen();
         } catch (error) {
           console.error("Error during logout:", error);
+          hideLoadingScreen();
         }
+      }
+
+      const LOADING_MESSAGES = [
+        { emoji: "🌳", message: "Growing the forest..." },
+        { emoji: "🏔️", message: "Moving mountains..." },
+        { emoji: "🌱", message: "Planting the plains..." },
+        { emoji: "🌊", message: "Filling the oceans..." },
+        { emoji: "🦊", message: "Gathering the players..." },
+        { emoji: "🐻", message: "Preparing your character..." },
+      ];
+
+      function showLoadingScreen() {
+        const loadingScreen = document.getElementById("loading-screen");
+        const loadingEmoji = document.querySelector(".loading-emoji");
+        const loadingMessage = document.getElementById("loading-message");
+        let messageIndex = 0;
+
+        loadingScreen.style.display = "flex";
+
+        // Cycle through messages every 2 seconds
+        const interval = setInterval(() => {
+          messageIndex = (messageIndex + 1) % LOADING_MESSAGES.length;
+          const { emoji, message } = LOADING_MESSAGES[messageIndex];
+
+          loadingEmoji.textContent = emoji;
+          loadingMessage.textContent = message;
+        }, 2000);
+
+        // Store the interval ID on the loading screen element
+        loadingScreen.dataset.intervalId = interval;
+      }
+
+      function hideLoadingScreen() {
+        const loadingScreen = document.getElementById("loading-screen");
+        // Clear the message cycling interval
+        clearInterval(Number(loadingScreen.dataset.intervalId));
+        loadingScreen.style.display = "none";
       }
     </script>
   </body>
