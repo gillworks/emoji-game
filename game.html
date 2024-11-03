@@ -182,14 +182,14 @@
       async function findOrCreateServer() {
         try {
           // First check if player is already in a server using two separate queries
-          const { data: playerServer, error: playerError } =
+          const { data: playerServers, error: playerError } =
             await supabaseClient
               .from("server_players")
               .select("server_id")
-              .eq("player_id", gameState.playerId)
-              .single();
+              .eq("player_id", gameState.playerId);
 
-          if (!playerError && playerServer) {
+          if (!playerError && playerServers && playerServers.length > 0) {
+            const playerServer = playerServers[0];
             // Get server details
             const { data: serverDetails, error: serverError } =
               await supabaseClient
@@ -224,10 +224,13 @@
           // Rest of the function remains the same
           const { data: servers, error: serverError } = await supabaseClient
             .from("servers")
-            .select("*")
+            .select(
+              `
+              *,
+              player_count:server_players(count)
+            `
+            )
             .eq("status", "active")
-            .lt("current_players", 100)
-            .order("current_players", { ascending: false })
             .limit(1);
 
           if (serverError) throw serverError;
@@ -235,9 +238,14 @@
           let serverId;
 
           if (servers && servers.length > 0) {
-            // Join existing server
-            serverId = servers[0].id;
-            console.log("Joining existing server:", serverId);
+            const server = servers[0];
+            const playerCount = server.player_count[0].count;
+
+            if (playerCount < server.max_players) {
+              // Join existing server
+              serverId = server.id;
+              console.log("Joining existing server:", serverId);
+            }
           } else {
             // Create new server
             const { data: newServer, error: createError } = await supabaseClient
@@ -1168,40 +1176,12 @@
             return;
           }
 
-          // Call decrement_server_players RPC
-          await fetch(
-            `${getEnvVariable(
-              "NEXT_PUBLIC_SUPABASE_URL"
-            )}/rest/v1/rpc/decrement_server_players`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                apikey: getEnvVariable("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
-              },
-              body: JSON.stringify({ server_id: gameState.serverId }),
-              keepalive: true,
-            }
-          );
+          // Only call decrement_server_players to update last_active
+          await supabaseClient.rpc("decrement_server_players", {
+            server_id: gameState.serverId,
+          });
 
-          // Delete player from server_players using query parameters
-          await fetch(
-            `${getEnvVariable(
-              "NEXT_PUBLIC_SUPABASE_URL"
-            )}/rest/v1/server_players?server_id=eq.${
-              gameState.serverId
-            }&player_id=eq.${gameState.playerId}`,
-            {
-              method: "DELETE",
-              headers: {
-                "Content-Type": "application/json",
-                apikey: getEnvVariable("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
-                Authorization: `Bearer ${session.access_token}`,
-                Prefer: "return=minimal",
-              },
-              keepalive: true,
-            }
-          );
+          // Remove the DELETE request to server_players - we want to preserve the record
         } catch (error) {
           console.error("Error leaving server:", error);
         }
