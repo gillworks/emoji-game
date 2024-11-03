@@ -19,6 +19,15 @@
         getEnvVariable("NEXT_PUBLIC_SUPABASE_URL"),
         getEnvVariable("NEXT_PUBLIC_SUPABASE_ANON_KEY")
       );
+
+      // Add this function near the top of the script section
+      function getUrlParameter(name) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(name);
+      }
+
+      // Add this variable after gameState declaration
+      let isDemoMode = getUrlParameter("mode") === "demo";
     </script>
   </head>
   <body>
@@ -710,7 +719,10 @@
       function renderMap() {
         const canvas = document.getElementById("map-canvas");
         const ctx = canvas.getContext("2d");
-        const cellSize = Math.min(window.innerWidth, window.innerHeight) * 0.04;
+        // Update cell size calculation to account for demo mode
+        const cellSize =
+          Math.min(window.innerWidth, window.innerHeight) *
+          (isDemoMode ? 0.085 : 0.04);
 
         // Reset any transformations
         ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -1126,6 +1138,18 @@
           if (!isAuthenticated) {
             hideLoadingScreen();
             return;
+          }
+
+          // Add demo mode UI adjustments
+          if (isDemoMode) {
+            // Hide username display
+            document.querySelector(
+              "#status-bar div:nth-child(4)"
+            ).style.display = "none";
+            // Hide logout button
+            document.querySelector(
+              "#status-bar div:nth-child(5)"
+            ).style.display = "none";
           }
 
           // Get player username and update display
