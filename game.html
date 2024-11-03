@@ -1195,18 +1195,12 @@
             .on(
               "postgres_changes",
               {
-                event: "*", // This catches all events, but we need to handle them specifically
+                event: "*",
                 schema: "public",
                 table: "player_positions",
                 filter: `server_id=eq.${gameState.serverId}`,
               },
               async (payload) => {
-                console.log(
-                  "Position change event:",
-                  payload.eventType,
-                  payload
-                );
-
                 if (
                   payload.eventType === "INSERT" ||
                   payload.eventType === "UPDATE"
