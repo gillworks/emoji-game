@@ -41,10 +41,17 @@ body {
 #status-bar {
   padding: 10px;
   background: #333;
+  color: #9b9b9b;
   border-radius: 5px;
   display: flex;
   justify-content: space-around;
   margin: 10px 20px 0 20px;
+  font-size: 36px;
+  font-weight: bold;
+}
+
+#status-bar span {
+  color: #ffffff;
 }
 
 #battle-screen {
