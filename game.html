@@ -1145,14 +1145,8 @@
         }
       }
 
-      // Modify the beforeunload event listener
-      window.addEventListener("beforeunload", (event) => {
-        // Cancel the event
-        event.preventDefault();
-        // Chrome requires returnValue to be set
-        event.returnValue = "";
-
-        // Synchronously start the cleanup
+      // Replace this event listener
+      window.addEventListener("beforeunload", () => {
         leaveServer();
       });
 
