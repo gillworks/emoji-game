@@ -69,6 +69,8 @@ body {
   border: none;
   border-radius: 5px;
   color: white;
+  position: relative;
+  padding-left: 45px;
 }
 
 .battle-option:hover {
@@ -205,4 +207,19 @@ body {
   50% {
     transform: translateY(-20px);
   }
+}
+
+.key-indicator {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #333;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #aaa;
+  min-width: 18px;
+  text-align: center;
 }

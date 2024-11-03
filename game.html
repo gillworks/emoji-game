@@ -66,20 +66,25 @@
         <div id="battle-text"></div>
         <div id="battle-options">
           <button class="battle-option" onclick="chooseBattle('fight')">
+            <span class="key-indicator">F</span>
             Fight
           </button>
           <button class="battle-option" onclick="chooseBattle('flee')">
+            <span class="key-indicator">R</span>
             Flee
           </button>
         </div>
         <div id="attack-options" style="display: none">
           <button class="battle-option" onclick="chooseAttack('quick')">
+            <span class="key-indicator">1</span>
             Quick Attack 🌪️
           </button>
           <button class="battle-option" onclick="chooseAttack('heavy')">
+            <span class="key-indicator">2</span>
             Heavy Attack 🔨
           </button>
           <button class="battle-option" onclick="chooseAttack('block')">
+            <span class="key-indicator">3</span>
             Block 🛡️
           </button>
         </div>
@@ -992,21 +997,65 @@
       });
 
       document.addEventListener("keydown", async (e) => {
-        if (gameState.inBattle) return;
+        const key = e.key.toLowerCase();
 
+        if (gameState.inBattle) {
+          // Battle controls
+          switch (key) {
+            case "f":
+              chooseBattle("fight");
+              break;
+            case "r":
+              chooseBattle("flee");
+              break;
+            case "1":
+              if (
+                document.getElementById("attack-options").style.display ===
+                "block"
+              ) {
+                chooseAttack("quick");
+              }
+              break;
+            case "2":
+              if (
+                document.getElementById("attack-options").style.display ===
+                "block"
+              ) {
+                chooseAttack("heavy");
+              }
+              break;
+            case "3":
+              if (
+                document.getElementById("attack-options").style.display ===
+                "block"
+              ) {
+                chooseAttack("block");
+              }
+              break;
+            default:
+              return;
+          }
+          return;
+        }
+
+        // Movement controls (when not in battle)
         const newPos = { ...gameState.playerPos };
 
-        switch (e.key) {
-          case "ArrowUp":
+        switch (key) {
+          case "w":
+          case "arrowup":
             if (newPos.y > 0) newPos.y--;
             break;
-          case "ArrowDown":
+          case "s":
+          case "arrowdown":
             if (newPos.y < gameState.mapHeight - 1) newPos.y++;
             break;
-          case "ArrowLeft":
+          case "a":
+          case "arrowleft":
             if (newPos.x > 0) newPos.x--;
             break;
-          case "ArrowRight":
+          case "d":
+          case "arrowright":
             if (newPos.x < gameState.mapWidth - 1) newPos.x++;
             break;
           default:
