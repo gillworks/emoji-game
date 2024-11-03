@@ -127,6 +127,10 @@
       <div id="status-bar">
         <div>Health: <span id="health">100</span></div>
         <div>Score: <span id="score">0</span></div>
+        <div>
+          Position: (<span id="position-x">-</span>,
+          <span id="position-y">-</span>)
+        </div>
       </div>
       <div id="game-map">
         <canvas id="map-canvas"></canvas>
@@ -427,6 +431,12 @@
       function updateStatus() {
         document.getElementById("health").textContent = gameState.health;
         document.getElementById("score").textContent = gameState.score;
+        if (gameState.playerPos) {
+          document.getElementById("position-x").textContent =
+            gameState.playerPos.x;
+          document.getElementById("position-y").textContent =
+            gameState.playerPos.y;
+        }
       }
 
       function checkEncounter() {
@@ -643,6 +653,7 @@
         }
 
         renderMap();
+        updateStatus();
         checkEncounter();
       });
 
