@@ -41,6 +41,23 @@ Stores the terrain type for each coordinate on the map
 | y | integer | Y coordinate (part of composite primary key) |
 | terrain_type_id | text | Foreign key to terrain_types.id |
 
+### game_configs
+
+Stores server-wide game configuration values
+| Column | Type | Description |
+|--------|------|-------------|
+| key | text | Primary key, configuration key |
+| value | jsonb | Configuration value |
+| updated_at | timestamp | Last update timestamp |
+
+### admin_users
+
+Stores users with administrative privileges
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key, foreign key to auth.users(id) |
+| created_at | timestamp | When the admin was added |
+
 ## Row Level Security (RLS)
 
 ### player_positions
@@ -67,6 +84,17 @@ Stores the terrain type for each coordinate on the map
   - "Users can view all player records"
     - Applies to: SELECT
     - Condition: true (for authenticated users)
+
+### game_configs
+
+- ✅ RLS enabled
+- Policies:
+  - "Configs are readable by all authenticated users"
+    - Applies to: SELECT
+    - Condition: true (for authenticated users)
+  - "Only admins can modify configs"
+    - Applies to: INSERT, UPDATE, DELETE
+    - Condition: auth.uid() IN (SELECT id FROM admin_users)
 
 ## Realtime Subscriptions
 

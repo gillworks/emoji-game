@@ -162,7 +162,12 @@
 
     <script>
       const MAP_SIZE = 120;
-      let TERRAIN_TYPES = {};
+      const TERRAIN_TYPES = {
+        FOREST: { emoji: "🌳", encounter: "🐺" },
+        MOUNTAIN: { emoji: "🏔️", encounter: "🐆" },
+        PLAIN: { emoji: "🌱", encounter: "🦁" },
+        OCEAN: { emoji: "🌊", encounter: "🦈" },
+      };
 
       let gameState = {
         map: [],
@@ -183,55 +188,48 @@
         },
         playerId: null,
         otherPlayers: new Map(),
+        configs: null,
       };
 
-      async function loadTerrainTypes() {
+      async function fetchGameConfigs() {
         try {
           const { data, error } = await supabaseClient
-            .from("terrain_types")
+            .from("game_configs")
             .select("*");
 
-          if (error) {
-            console.error("Error loading terrain types:", error);
-            throw error;
-          }
+          if (error) throw error;
 
-          // Convert array to object format matching current structure
-          TERRAIN_TYPES = data.reduce((acc, type) => {
-            acc[type.id] = {
-              emoji: type.emoji,
-              encounter: type.encounter,
-            };
-            return acc;
-          }, {});
+          // Convert array of configs to object
+          const configs = {};
+          data.forEach((config) => {
+            configs[config.key] = config.value;
+          });
 
-          console.log("Terrain types loaded:", TERRAIN_TYPES);
+          gameState.configs = configs;
+          console.log("Game configs loaded:", configs);
         } catch (error) {
-          console.error("Failed to load terrain types:", error);
-          // Fallback to default terrain types if loading fails
-          TERRAIN_TYPES = {
-            FOREST: { emoji: "🌳", encounter: "🐺" },
-            MOUNTAIN: { emoji: "🏔️", encounter: "🐆" },
-            PLAIN: { emoji: "🌱", encounter: "🦁" },
-            OCEAN: { emoji: "🌊", encounter: "🦈" },
+          console.error("Error fetching game configs:", error);
+          // Use default values if configs can't be loaded
+          gameState.configs = {
+            encounter_rates: {
+              FOREST: 0.3,
+              MOUNTAIN: 0.4,
+              PLAIN: 0.2,
+              OCEAN: 0.3,
+            },
           };
         }
       }
 
       function initMap() {
-        const terrainTypeIds = Object.keys(TERRAIN_TYPES);
         for (let y = 0; y < MAP_SIZE; y++) {
           gameState.map[y] = [];
           for (let x = 0; x < MAP_SIZE; x++) {
             const rand = Math.random();
-            if (rand < 0.3)
-              gameState.map[y][x] = TERRAIN_TYPES[terrainTypeIds[0]]; // FOREST
-            else if (rand < 0.5)
-              gameState.map[y][x] =
-                TERRAIN_TYPES[terrainTypeIds[1]]; // MOUNTAIN
-            else if (rand < 0.8)
-              gameState.map[y][x] = TERRAIN_TYPES[terrainTypeIds[2]]; // PLAIN
-            else gameState.map[y][x] = TERRAIN_TYPES[terrainTypeIds[3]]; // OCEAN
+            if (rand < 0.3) gameState.map[y][x] = TERRAIN_TYPES.FOREST;
+            else if (rand < 0.5) gameState.map[y][x] = TERRAIN_TYPES.MOUNTAIN;
+            else if (rand < 0.8) gameState.map[y][x] = TERRAIN_TYPES.PLAIN;
+            else gameState.map[y][x] = TERRAIN_TYPES.OCEAN;
           }
         }
       }
@@ -411,10 +409,17 @@
       }
 
       function checkEncounter() {
-        if (Math.random() < 0.3) {
+        const currentTerrain =
+          gameState.map[gameState.playerPos.y][gameState.playerPos.x];
+        const terrainType = Object.keys(TERRAIN_TYPES).find(
+          (type) => TERRAIN_TYPES[type].emoji === currentTerrain.emoji
+        );
+
+        const encounterRate =
+          gameState.configs?.encounter_rates?.[terrainType] ?? 0.3;
+
+        if (Math.random() < encounterRate) {
           gameState.inBattle = true;
-          const currentTerrain =
-            gameState.map[gameState.playerPos.y][gameState.playerPos.x];
           gameState.currentEnemy = currentTerrain.encounter;
           showBattleScreen();
         }
@@ -528,6 +533,7 @@
           },
           playerId: null,
           otherPlayers: new Map(),
+          configs: null,
         };
         initMap();
         initCanvas();
@@ -622,7 +628,7 @@
       // Initialize game
       async function initGame() {
         await initSupabase();
-        await loadTerrainTypes();
+        await fetchGameConfigs();
         initMap();
         initCanvas();
         renderMap();
