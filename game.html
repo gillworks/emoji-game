@@ -460,46 +460,14 @@
           gameState.playerId = user.id;
           console.log("Player ID set:", gameState.playerId);
 
-          // Add retry mechanism for position fetch
-          let positionData;
-          retries = 3;
-          while (retries > 0) {
-            const { data, error } = await supabaseClient
-              .from("player_positions")
-              .select("x, y")
-              .eq("player_id", gameState.playerId)
-              .single();
-
-            if (error && error.code !== "PGRST116") {
-              if (retries === 1) {
-                console.error("Position fetch error:", error);
-                throw error;
-              }
-            } else {
-              positionData = data;
-              break;
-            }
-
-            console.log(`Retrying position fetch... (${retries} retries left)`);
-            await new Promise((resolve) => setTimeout(resolve, 500));
-            retries--;
-          }
-
-          // Set position from database or use default
-          gameState.playerPos = positionData || { x: 60, y: 60 };
-          console.log(
-            "Initial position set from database:",
-            gameState.playerPos
-          );
-
           // Create player record if it doesn't exist
           console.log("Creating player record...");
           const { error: playerError } = await supabaseClient
             .from("players")
             .upsert({
               id: gameState.playerId,
-              username: user.email.split("@")[0], // Use part before @ as username
-              created_at: new Date().toISOString(), // Add created_at timestamp
+              username: user.email.split("@")[0],
+              created_at: new Date().toISOString(),
             });
 
           if (playerError) {
@@ -507,20 +475,47 @@
             throw playerError;
           }
 
-          // Add a small delay to ensure the player record is created
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+          // Find or create server BEFORE handling positions
+          const serverId = await findOrCreateServer();
+          gameState.serverId = serverId;
+          console.log("Server ID set:", gameState.serverId);
 
-          console.log("Player record created successfully");
+          // Now handle positions with server_id
+          const { data: positionData, error: positionError } =
+            await supabaseClient
+              .from("player_positions")
+              .select("x, y, server_id")
+              .eq("player_id", gameState.playerId)
+              .single();
 
-          // Subscribe to player position changes
+          // Set initial position
+          gameState.playerPos = positionData || { x: 60, y: 60 };
+
+          // Update/insert position with server_id
+          const { error: posError } = await supabaseClient
+            .from("player_positions")
+            .upsert({
+              player_id: gameState.playerId,
+              server_id: gameState.serverId,
+              x: gameState.playerPos.x,
+              y: gameState.playerPos.y,
+            });
+
+          if (posError) {
+            console.error("Position update error:", posError);
+            throw posError;
+          }
+
+          // Set up realtime subscription
           const channel = supabaseClient
-            .channel("player_positions")
+            .channel(`server-${gameState.serverId}`)
             .on(
               "postgres_changes",
               {
                 event: "*",
                 schema: "public",
                 table: "player_positions",
+                filter: `server_id=eq.${gameState.serverId}`,
               },
               (payload) => {
                 if (
@@ -537,31 +532,14 @@
             )
             .subscribe();
 
-          console.log("Channel subscribed");
-
-          // Insert initial player position
-          const { data: posData, error: posError } = await supabaseClient
+          // Load other players' positions
+          const { data: otherPositions } = await supabaseClient
             .from("player_positions")
-            .upsert({
-              player_id: gameState.playerId,
-              x: gameState.playerPos.x,
-              y: gameState.playerPos.y,
-            });
+            .select("player_id, x, y")
+            .eq("server_id", gameState.serverId)
+            .neq("player_id", gameState.playerId);
 
-          if (posError) {
-            console.error("Position update error:", posError);
-            throw posError;
-          }
-          console.log("Initial position set:", posData);
-
-          // Also fetch initial positions of other players
-          const { data: otherPositions, error: otherPositionsError } =
-            await supabaseClient
-              .from("player_positions")
-              .select("*")
-              .neq("player_id", gameState.playerId);
-
-          if (!otherPositionsError && otherPositions) {
+          if (otherPositions) {
             otherPositions.forEach((pos) => {
               gameState.otherPlayers.set(pos.player_id, {
                 x: pos.x,
@@ -1042,6 +1020,7 @@
             .from("player_positions")
             .upsert({
               player_id: gameState.playerId,
+              server_id: gameState.serverId,
               x: newPos.x,
               y: newPos.y,
             });
@@ -1071,8 +1050,7 @@
           }
 
           await fetchGameConfigs();
-          const serverId = await findOrCreateServer();
-          await loadMap(serverId);
+          await loadMap(gameState.serverId);
           initCanvas();
           renderMap();
           updateStatus();

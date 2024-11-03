@@ -19,6 +19,7 @@ Stores current position of players on the map
 | Column | Type | Description |
 |--------|------|-------------|
 | player_id | uuid | Foreign key to players.id |
+| server_id | uuid | Foreign key to servers.id |
 | x | integer | X coordinate on game map |
 | y | integer | Y coordinate on game map |
 | updated_at | timestamp | Last update timestamp |
@@ -96,6 +97,7 @@ All tables have RLS enabled with appropriate policies:
 
 - Players can update their own position
 - All authenticated users can view positions
+- Positions are scoped to specific servers
 
 ### game_configs
 
@@ -135,7 +137,13 @@ Automated cleanup of inactive servers and their associated data
 
 The following tables have realtime enabled:
 
-- player_positions (for live player movement)
+- player_positions (for live player movement, filtered by server_id)
+
+## Indexes
+
+The following indexes improve query performance:
+
+- idx_player_positions_server on player_positions(server_id)
 
 ## Initial Data
 
