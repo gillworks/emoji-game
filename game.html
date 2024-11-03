@@ -171,7 +171,7 @@
 
       let gameState = {
         map: [],
-        playerPos: { x: 60, y: 60 },
+        playerPos: null,
         health: 100,
         score: 0,
         inBattle: false,
@@ -279,6 +279,27 @@
 
           gameState.playerId = user.id;
           console.log("Player ID set:", gameState.playerId);
+
+          // Load player position before creating/updating player record
+          const { data: positionData, error: positionError } =
+            await supabaseClient
+              .from("player_positions")
+              .select("x, y")
+              .eq("player_id", gameState.playerId)
+              .single();
+
+          if (positionError && positionError.code !== "PGRST116") {
+            // PGRST116 is "no rows returned"
+            console.error("Position fetch error:", positionError);
+            throw positionError;
+          }
+
+          // Set position from database or use default
+          gameState.playerPos = positionData || { x: 60, y: 60 };
+          console.log(
+            "Initial position set from database:",
+            gameState.playerPos
+          );
 
           // Create player record if it doesn't exist
           console.log("Creating player record...");
@@ -531,7 +552,7 @@
             lastX: 0,
             lastY: 0,
           },
-          playerId: null,
+          playerId: gameState.playerId,
           otherPlayers: new Map(),
           configs: null,
         };
@@ -625,7 +646,7 @@
         checkEncounter();
       });
 
-      // Initialize game
+      // Simplify initGame since position loading is now handled in initSupabase
       async function initGame() {
         await initSupabase();
         await fetchGameConfigs();
