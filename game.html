@@ -193,7 +193,28 @@
         playerId: null,
         otherPlayers: new Map(),
         configs: null,
+        serverId: null,
       };
+
+      let lastActiveInterval;
+
+      function startLastActiveUpdates() {
+        if (lastActiveInterval) {
+          clearInterval(lastActiveInterval);
+        }
+
+        lastActiveInterval = setInterval(async () => {
+          if (gameState.serverId) {
+            try {
+              await supabaseClient.rpc("increment_server_players", {
+                server_id: gameState.serverId,
+              });
+            } catch (error) {
+              console.error("Error updating last_active:", error);
+            }
+          }
+        }, 30000);
+      }
 
       async function fetchGameConfigs() {
         try {
@@ -225,16 +246,216 @@
         }
       }
 
-      function initMap() {
-        for (let y = 0; y < MAP_SIZE; y++) {
-          gameState.map[y] = [];
-          for (let x = 0; x < MAP_SIZE; x++) {
-            const rand = Math.random();
-            if (rand < 0.3) gameState.map[y][x] = TERRAIN_TYPES.FOREST;
-            else if (rand < 0.5) gameState.map[y][x] = TERRAIN_TYPES.MOUNTAIN;
-            else if (rand < 0.8) gameState.map[y][x] = TERRAIN_TYPES.PLAIN;
-            else gameState.map[y][x] = TERRAIN_TYPES.OCEAN;
+      async function findOrCreateServer() {
+        try {
+          // First check if player is already in a server
+          const { data: existingServer, error: existingError } =
+            await supabaseClient
+              .from("server_players")
+              .select("server_id, servers!inner(*)")
+              .eq("player_id", gameState.playerId)
+              .single();
+
+          if (!existingError && existingServer) {
+            // Player is already in a server, check if it's still active
+            if (existingServer.servers.status === "active") {
+              console.log(
+                "Rejoining existing server:",
+                existingServer.server_id
+              );
+
+              // Call increment_server_players to ensure count is correct
+              await supabaseClient.rpc("increment_server_players", {
+                server_id: existingServer.server_id,
+              });
+
+              gameState.serverId = existingServer.server_id;
+              return existingServer.server_id;
+            } else {
+              // Server is inactive, remove player from it
+              await supabaseClient.from("server_players").delete().match({
+                server_id: existingServer.server_id,
+                player_id: gameState.playerId,
+              });
+            }
           }
+
+          // Look for an active server with space
+          const { data: servers, error: serverError } = await supabaseClient
+            .from("servers")
+            .select("*")
+            .eq("status", "active")
+            .lt("current_players", 100)
+            .order("current_players", { ascending: false })
+            .limit(1);
+
+          if (serverError) throw serverError;
+
+          let serverId;
+
+          if (servers && servers.length > 0) {
+            // Join existing server
+            serverId = servers[0].id;
+            console.log("Joining existing server:", serverId);
+          } else {
+            // Create new server
+            const { data: newServer, error: createError } = await supabaseClient
+              .from("servers")
+              .insert([
+                {
+                  name: `Server ${Math.floor(Math.random() * 1000)}`,
+                  status: "active",
+                  max_players: 100,
+                  current_players: 0,
+                },
+              ])
+              .select()
+              .single();
+
+            if (createError) throw createError;
+            serverId = newServer.id;
+
+            // Generate and store map for new server
+            await generateAndStoreMap(serverId);
+            console.log("Created new server:", serverId);
+          }
+
+          // Join server
+          const { error: joinError } = await supabaseClient
+            .from("server_players")
+            .upsert([{ server_id: serverId, player_id: gameState.playerId }]);
+
+          if (joinError) throw joinError;
+
+          // Always call increment_server_players after joining
+          await supabaseClient.rpc("increment_server_players", {
+            server_id: serverId,
+          });
+
+          gameState.serverId = serverId;
+          return serverId;
+        } catch (error) {
+          console.error("Error finding/creating server:", error);
+          throw error;
+        }
+      }
+
+      async function loadMap(serverId) {
+        try {
+          // Initialize empty map
+          gameState.map = Array(MAP_SIZE)
+            .fill()
+            .map(() => Array(MAP_SIZE).fill(TERRAIN_TYPES.PLAIN));
+
+          // Calculate total tiles needed
+          const totalTiles = MAP_SIZE * MAP_SIZE;
+          const pageSize = 1000;
+          const totalPages = Math.ceil(totalTiles / pageSize);
+
+          // Load map data in pages
+          for (let page = 0; page < totalPages; page++) {
+            const { data: mapData, error } = await supabaseClient
+              .from("map_data")
+              .select("x, y, terrain_type")
+              .eq("server_id", serverId)
+              .range(page * pageSize, (page + 1) * pageSize - 1);
+
+            if (error) {
+              console.error(`Error loading page ${page}:`, error);
+              throw error;
+            }
+
+            // Populate map from database
+            mapData.forEach((tile) => {
+              if (
+                tile.x >= 0 &&
+                tile.x < MAP_SIZE &&
+                tile.y >= 0 &&
+                tile.y < MAP_SIZE &&
+                TERRAIN_TYPES[tile.terrain_type]
+              ) {
+                gameState.map[tile.y][tile.x] =
+                  TERRAIN_TYPES[tile.terrain_type];
+              }
+            });
+          }
+
+          renderMap();
+        } catch (error) {
+          console.error("Error loading map:", error);
+          throw error;
+        }
+      }
+
+      async function generateAndStoreMap(serverId) {
+        try {
+          const mapData = [];
+          let debug_counts = {
+            FOREST: 0,
+            MOUNTAIN: 0,
+            PLAIN: 0,
+            OCEAN: 0,
+          };
+
+          for (let y = 0; y < MAP_SIZE; y++) {
+            for (let x = 0; x < MAP_SIZE; x++) {
+              const rand = Math.random();
+              let terrainType;
+
+              // Adjust thresholds to ensure better distribution
+              if (rand < 0.25) {
+                terrainType = "FOREST";
+                debug_counts.FOREST++;
+              } else if (rand < 0.5) {
+                terrainType = "MOUNTAIN";
+                debug_counts.MOUNTAIN++;
+              } else if (rand < 0.75) {
+                terrainType = "PLAIN";
+                debug_counts.PLAIN++;
+              } else {
+                terrainType = "OCEAN";
+                debug_counts.OCEAN++;
+              }
+
+              mapData.push({
+                server_id: serverId,
+                x: x,
+                y: y,
+                terrain_type: terrainType,
+              });
+            }
+          }
+
+          console.log("Generated terrain distribution:", debug_counts);
+
+          // Insert in batches of 1000 to avoid payload size limits
+          for (let i = 0; i < mapData.length; i += 1000) {
+            const batch = mapData.slice(i, i + 1000);
+            const { error } = await supabaseClient
+              .from("map_data")
+              .insert(batch);
+
+            if (error) {
+              console.error("Error inserting batch:", error);
+              throw error;
+            }
+          }
+
+          // Verify the data was inserted correctly
+          const { data: verifyData, error: verifyError } = await supabaseClient
+            .from("map_data")
+            .select("terrain_type")
+            .eq("server_id", serverId)
+            .limit(5);
+
+          if (verifyError) {
+            console.error("Error verifying map data:", verifyError);
+          } else {
+            console.log("Sample of inserted map data:", verifyData);
+          }
+        } catch (error) {
+          console.error("Error storing map:", error);
+          throw error;
         }
       }
 
@@ -393,30 +614,41 @@
         const ctx = canvas.getContext("2d");
         const cellSize = Math.min(window.innerWidth, window.innerHeight) * 0.04;
 
+        // Reset any transformations
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+
         // Set canvas size
         canvas.width = MAP_SIZE * cellSize;
         canvas.height = MAP_SIZE * cellSize;
 
-        // Clear canvas
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Clear canvas with a background color
+        ctx.fillStyle = "#2a2a2a";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         // Draw terrain
         for (let y = 0; y < MAP_SIZE; y++) {
           for (let x = 0; x < MAP_SIZE; x++) {
+            const terrain = gameState.map[y][x];
+
+            if (!terrain || !terrain.emoji) continue;
+
+            // Calculate position
+            const posX = x * cellSize + cellSize / 2;
+            const posY = y * cellSize + cellSize / 2;
+
+            // Set text properties for each emoji
             ctx.font = `${cellSize * 0.6}px Arial`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
+            ctx.fillStyle = "white";
 
-            // Draw terrain emoji
-            ctx.fillText(
-              gameState.map[y][x].emoji,
-              x * cellSize + cellSize / 2,
-              y * cellSize + cellSize / 2
-            );
+            // Draw the emoji
+            ctx.fillText(terrain.emoji, posX, posY);
           }
         }
 
-        // Draw other players first
+        // Draw other players
+        ctx.font = `${cellSize * 0.6}px Arial`;
         gameState.otherPlayers.forEach((pos) => {
           ctx.fillText(
             "🦊",
@@ -425,7 +657,7 @@
           );
         });
 
-        // Draw main player last (so it appears on top)
+        // Draw main player
         if (gameState.playerPos) {
           ctx.fillText(
             "🐻",
@@ -434,8 +666,36 @@
           );
         }
 
-        // Apply viewport transform
+        // Apply viewport transform to canvas style
         canvas.style.transform = `translate(${gameState.viewport.x}px, ${gameState.viewport.y}px) scale(${gameState.viewport.scale})`;
+      }
+
+      // Also add this debug function
+      function debugMapSection(startX = 0, startY = 0, size = 5) {
+        console.log(
+          `Debugging map section from (${startX},${startY}) to (${
+            startX + size - 1
+          },${startY + size - 1}):`
+        );
+        for (let y = startY; y < startY + size; y++) {
+          let row = "";
+          for (let x = startX; x < startX + size; x++) {
+            if (gameState.map[y] && gameState.map[y][x]) {
+              row += gameState.map[y][x].emoji + " ";
+            } else {
+              row += "❌ ";
+            }
+          }
+          console.log(row);
+        }
+      }
+
+      // Call this after loadMap completes
+      function verifyMapRendering() {
+        console.log("Verifying map rendering...");
+        debugMapSection(0, 0, 5); // Check top-left corner
+        debugMapSection(57, 57, 5); // Check middle section
+        debugMapSection(115, 115, 5); // Check bottom-right corner
       }
 
       function initCanvas() {
@@ -583,6 +843,7 @@
           playerId: gameState.playerId,
           otherPlayers: new Map(),
           configs: null,
+          serverId: null,
         };
         initMap();
         initCanvas();
@@ -677,12 +938,21 @@
 
       // Simplify initGame since position loading is now handled in initSupabase
       async function initGame() {
-        await initSupabase();
-        await fetchGameConfigs();
-        initMap();
-        initCanvas();
-        renderMap();
-        updateStatus();
+        try {
+          await initSupabase();
+          await fetchGameConfigs();
+
+          // Find or create server and load map
+          const serverId = await findOrCreateServer();
+          await loadMap(serverId);
+
+          initCanvas();
+          renderMap();
+          updateStatus();
+          startLastActiveUpdates();
+        } catch (error) {
+          console.error("Error initializing game:", error);
+        }
       }
 
       // Replace the initialization calls with:
@@ -693,6 +963,90 @@
         initCanvas();
         renderMap();
       });
+
+      // Add cleanup function for when player leaves
+      async function leaveServer() {
+        if (!gameState.serverId) return;
+
+        if (lastActiveInterval) {
+          clearInterval(lastActiveInterval);
+        }
+
+        try {
+          // Get current session
+          const {
+            data: { session },
+          } = await supabaseClient.auth.getSession();
+          if (!session) {
+            console.error("No active session");
+            return;
+          }
+
+          // Use fetch with keepalive to ensure the request completes
+          const response = await fetch(
+            `${getEnvVariable(
+              "NEXT_PUBLIC_SUPABASE_URL"
+            )}/rest/v1/rpc/decrement_server_players`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                apikey: getEnvVariable("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({ server_id: gameState.serverId }),
+              keepalive: true,
+            }
+          );
+
+          // Remove player from server_players table
+          await fetch(
+            `${getEnvVariable(
+              "NEXT_PUBLIC_SUPABASE_URL"
+            )}/rest/v1/server_players`,
+            {
+              method: "DELETE",
+              headers: {
+                "Content-Type": "application/json",
+                apikey: getEnvVariable("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
+                Authorization: `Bearer ${session.access_token}`,
+                Prefer: "return=minimal",
+              },
+              body: JSON.stringify({
+                server_id: gameState.serverId,
+                player_id: gameState.playerId,
+              }),
+              keepalive: true,
+            }
+          );
+        } catch (error) {
+          console.error("Error leaving server:", error);
+        }
+      }
+
+      // Modify the beforeunload event listener
+      window.addEventListener("beforeunload", (event) => {
+        // Cancel the event
+        event.preventDefault();
+        // Chrome requires returnValue to be set
+        event.returnValue = "";
+
+        // Synchronously start the cleanup
+        leaveServer();
+      });
+
+      // Also add cleanup on page hide
+      window.addEventListener("pagehide", leaveServer);
+
+      // Add cleanup on visibility change to hidden
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") {
+          leaveServer();
+        }
+      });
+
+      // Also let's verify our TERRAIN_TYPES constant is correct
+      console.log("Available terrain types:", Object.keys(TERRAIN_TYPES));
     </script>
   </body>
 </html>

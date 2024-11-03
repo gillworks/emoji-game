@@ -32,15 +32,6 @@ Defines the different types of terrain and their associated encounters
 | emoji | text | Emoji representation of terrain |
 | encounter | text | Emoji representation of encounter |
 
-### map_tiles
-
-Stores the terrain type for each coordinate on the map
-| Column | Type | Description |
-|--------|------|-------------|
-| x | integer | X coordinate (part of composite primary key) |
-| y | integer | Y coordinate (part of composite primary key) |
-| terrain_type_id | text | Foreign key to terrain_types.id |
-
 ### game_configs
 
 Stores server-wide game configuration values
@@ -58,48 +49,95 @@ Stores users with administrative privileges
 | id | uuid | Primary key, foreign key to auth.users(id) |
 | created_at | timestamp | When the admin was added |
 
+### servers
+
+Manages game server instances
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| name | text | Server name |
+| status | text | Server status (active/inactive) |
+| created_at | timestamp | When server was created |
+| last_active | timestamp | Last activity timestamp |
+| max_players | integer | Maximum allowed players |
+| current_players | integer | Current player count |
+
+### map_data
+
+Stores the terrain type for each coordinate on each server's map
+| Column | Type | Description |
+|--------|------|-------------|
+| server_id | uuid | Foreign key to servers.id |
+| x | integer | X coordinate |
+| y | integer | Y coordinate |
+| terrain_type | text | Type of terrain at this location |
+
+### server_players
+
+Tracks which players are on which servers
+| Column | Type | Description |
+|--------|------|-------------|
+| server_id | uuid | Foreign key to servers.id |
+| player_id | uuid | Foreign key to players.id |
+| joined_at | timestamp | When player joined server |
+
 ## Row Level Security (RLS)
 
-### player_positions
-
-- ✅ RLS enabled
-- Policies:
-  - "Players can update their own position"
-    - Applies to: ALL operations
-    - Condition: auth.uid() = player_id
-  - "Player positions are visible to all"
-    - Applies to: SELECT
-    - Condition: true (for authenticated users)
+All tables have RLS enabled with appropriate policies:
 
 ### players
 
-- ✅ RLS enabled
-- Policies:
-  - "Users can insert their own player record"
-    - Applies to: INSERT
-    - Condition: auth.uid() = id
-  - "Users can update their own player record"
-    - Applies to: UPDATE
-    - Condition: auth.uid() = id
-  - "Users can view all player records"
-    - Applies to: SELECT
-    - Condition: true (for authenticated users)
+- Users can insert/update their own records
+- All authenticated users can view player records
+
+### player_positions
+
+- Players can update their own position
+- All authenticated users can view positions
 
 ### game_configs
 
-- ✅ RLS enabled
-- Policies:
-  - "Configs are readable by all authenticated users"
-    - Applies to: SELECT
-    - Condition: true (for authenticated users)
-  - "Only admins can modify configs"
-    - Applies to: INSERT, UPDATE, DELETE
-    - Condition: auth.uid() IN (SELECT id FROM admin_users)
+- All authenticated users can view configs
+- Only admins can modify configs
+
+### servers
+
+- All authenticated users can view servers
+- Authenticated users can create servers
+
+### map_data
+
+- All authenticated users can view map data
+- Authenticated users can insert map data
+
+### server_players
+
+- All authenticated users can view server players
+- Players can join/leave servers they belong to
+
+## Stored Procedures
+
+### increment_server_players(server_id UUID)
+
+Increments the player count for a server and updates last_active timestamp
+
+### decrement_server_players(server_id UUID)
+
+Decrements the player count for a server and updates last_active timestamp
+
+### cleanup_inactive_servers()
+
+Automated cleanup of inactive servers and their associated data
 
 ## Realtime Subscriptions
 
 The following tables have realtime enabled:
 
-- `player_positions` (via supabase_realtime publication)
+- player_positions (for live player movement)
 
-## Full SQL Setup
+## Initial Data
+
+The database is seeded with:
+
+- Basic terrain types (FOREST, MOUNTAIN, PLAIN, OCEAN)
+- Default encounter rates in game_configs
