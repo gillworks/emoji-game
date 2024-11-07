@@ -32,6 +32,13 @@
       // Add this to your gameState object
       gameState.inventory = {
         selectedSlot: 1,
+        items: {
+          1: "🗡️", // Sword
+          2: "🏹", // Bow
+          3: "🪄", // Magic wand
+          4: "🍖", // Food
+          5: "🧪", // Potion
+        },
       };
 
       // Add this function after the other event listeners
@@ -64,6 +71,22 @@
       document
         .querySelector('.hotbar-slot[data-slot="1"]')
         .classList.add("selected");
+
+      // Add this function after the handleHotbarSelection function
+      function updateHotbarDisplay() {
+        // Update each slot with its item
+        for (let slot = 1; slot <= 9; slot++) {
+          const slotElement = document.querySelector(
+            `.hotbar-slot[data-slot="${slot}"] .slot-content`
+          );
+          if (slotElement) {
+            slotElement.textContent = gameState.inventory.items[slot] || "";
+          }
+        }
+      }
+
+      // Add this line to your initGame function, right after selecting the first slot
+      updateHotbarDisplay();
     </script>
   </head>
   <body>
@@ -239,6 +262,16 @@
         mapHeight: 20,
         playerAnimation: {
           bounceOffset: 0,
+        },
+        inventory: {
+          selectedSlot: 1,
+          items: {
+            1: "🗡️", // Sword
+            2: "🏹", // Bow
+            3: "🪄", // Magic wand
+            4: "🍖", // Food
+            5: "🧪", // Potion
+          },
         },
       };
 
@@ -1419,6 +1452,11 @@
           requestAnimationFrame(animatePlayer);
 
           hideLoadingScreen();
+          // Add these two lines after hideLoadingScreen()
+          document
+            .querySelector('.hotbar-slot[data-slot="1"]')
+            .classList.add("selected");
+          updateHotbarDisplay();
         } catch (error) {
           console.error("Error initializing game:", error);
           hideLoadingScreen();
