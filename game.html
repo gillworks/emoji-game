@@ -43,9 +43,11 @@
 
       // Add this function after the other event listeners
       function handleHotbarSelection(e) {
-        // Only handle number keys 1-9
-        if (e.key >= "1" && e.key <= "9" && !gameState.inBattle) {
-          const slotNumber = parseInt(e.key);
+        // Handle both number row keys and numpad keys
+        const key = e.key;
+        if (!gameState.inBattle && key >= "0" && key <= "9") {
+          // Convert key '0' to slot 10, otherwise use the number directly
+          const slotNumber = key === "0" ? 10 : parseInt(key);
 
           // Remove selected class from all slots
           document.querySelectorAll(".hotbar-slot").forEach((slot) => {
@@ -75,7 +77,7 @@
       // Add this function after the handleHotbarSelection function
       function updateHotbarDisplay() {
         // Update each slot with its item
-        for (let slot = 1; slot <= 9; slot++) {
+        for (let slot = 1; slot <= 10; slot++) {
           const slotElement = document.querySelector(
             `.hotbar-slot[data-slot="${slot}"] .slot-content`
           );
@@ -207,6 +209,10 @@
         </div>
         <div class="hotbar-slot" data-slot="9">
           <div class="hotkey">9</div>
+          <div class="slot-content"></div>
+        </div>
+        <div class="hotbar-slot" data-slot="10">
+          <div class="hotkey">0</div>
           <div class="slot-content"></div>
         </div>
       </div>
