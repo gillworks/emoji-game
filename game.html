@@ -147,6 +147,9 @@
         serverId: null,
         mapWidth: 20,
         mapHeight: 20,
+        playerAnimation: {
+          bounceOffset: 0
+        },
       };
 
       let lastActiveInterval;
@@ -763,15 +766,17 @@
           );
         });
 
-        // Draw main player - match the same font size
+        // Draw main player
         if (gameState.playerPos) {
+          ctx.font = `${cellSize * 0.8}px Arial`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillStyle = "white";
           ctx.fillText(
             "🐻",
             gameState.playerPos.x * cellSize + cellSize / 2,
-            gameState.playerPos.y * cellSize + cellSize / 2
+            gameState.playerPos.y * cellSize + cellSize / 2 + gameState.playerAnimation.bounceOffset
           );
-        } else {
-          console.warn("No player position available for rendering");
         }
 
         // Apply viewport transform
@@ -1313,6 +1318,9 @@
           updateStatus();
           startLastActiveUpdates();
 
+          // Start player animation
+          requestAnimationFrame(animatePlayer);
+
           hideLoadingScreen();
         } catch (error) {
           console.error("Error initializing game:", error);
@@ -1531,6 +1539,20 @@
           renderMap();
         }
       });
+
+      // Add this new function for the animation
+      function animatePlayer() {
+        // Create a smooth bounce using sine wave
+        gameState.playerAnimation.bounceOffset = Math.sin(Date.now() * 0.003) * 3;
+        
+        // Update only the player position
+        if (gameState.playerPos) {
+            renderMap();
+        }
+        
+        // Continue the animation loop
+        requestAnimationFrame(animatePlayer);
+      }
     </script>
   </body>
 </html>
