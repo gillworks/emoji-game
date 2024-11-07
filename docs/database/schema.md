@@ -33,6 +33,14 @@ Defines the different types of terrain and their associated encounters
 | emoji | text | Emoji representation of terrain |
 | encounter | text | Emoji representation of encounter |
 
+Available terrain types:
+
+- FOREST (🌳) - Forest with trees
+- EMPTY_FOREST (🌱) - Cleared forest area
+- MOUNTAIN (🏔️) - Mountain terrain
+- PLAIN (🌱) - Plains/grassland
+- OCEAN (🌊) - Ocean/water
+
 ### game_configs
 
 Stores server-wide game configuration values
@@ -159,5 +167,5 @@ The following tables have realtime enabled:
 
 The database is seeded with:
 
-- Basic terrain types (FOREST, MOUNTAIN, PLAIN, OCEAN)
-- Default encounter rates in game_configs
+- Basic terrain types (FOREST, MOUNTAIN, PLAIN, OCEAN, EMPTY_FOREST)
+- Default encounter rates in game_configs (including EMPTY_FOREST)
