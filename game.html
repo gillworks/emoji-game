@@ -144,6 +144,38 @@
           }
         });
       });
+
+      // Add this new function after the handleHotbarSelection function
+      function handleEmojiSelect(emoji) {
+        // Update the player's emoji in the database
+        supabaseClient
+          .from("players")
+          .update({ emoji: emoji })
+          .eq("id", gameState.playerId)
+          .then(({ error }) => {
+            if (error) {
+              console.error("Error updating player emoji:", error);
+              return;
+            }
+
+            // Update the display
+            document.querySelector("#player-emoji").textContent = emoji;
+            gameState.playerEmoji = emoji;
+            renderMap(); // Re-render to show new emoji on map
+          });
+
+        // Hide the emoji selector
+        document.getElementById("emoji-selector").style.display = "none";
+      }
+
+      // Add this function to toggle the emoji selector
+      function toggleEmojiSelector() {
+        const selector = document.getElementById("emoji-selector");
+        selector.style.display =
+          selector.style.display === "none" ? "flex" : "none";
+      }
+
+      // Modify the HTML for the player username section to include the emoji selector
     </script>
   </head>
   <body>
@@ -181,7 +213,32 @@
           <div>
             x,y: (<span id="position-x">-</span>,<span id="position-y">-</span>)
           </div>
-          <div>🐻 <span id="player-username">-</span></div>
+          <div>
+            <span
+              id="player-emoji"
+              style="cursor: pointer"
+              onclick="toggleEmojiSelector()"
+              >🐻</span
+            >
+            <span id="player-username">-</span>
+            <div id="emoji-selector" style="display: none">
+              <div class="emoji-option" onclick="handleEmojiSelect('🐻')">
+                🐻
+              </div>
+              <div class="emoji-option" onclick="handleEmojiSelect('🐸')">
+                🐸
+              </div>
+              <div class="emoji-option" onclick="handleEmojiSelect('🐵')">
+                🐵
+              </div>
+              <div class="emoji-option" onclick="handleEmojiSelect('🐨')">
+                🐨
+              </div>
+              <div class="emoji-option" onclick="handleEmojiSelect('🐷')">
+                🐷
+              </div>
+            </div>
+          </div>
           <div>
             <i
               class="fas fa-sign-out-alt logout-icon"
@@ -961,20 +1018,20 @@
         ctx.font = `${cellSize * 0.8}px Arial`;
         gameState.otherPlayers.forEach((pos) => {
           ctx.fillText(
-            "🦊",
+            pos.emoji || "🦊", // Use other player's emoji if available
             pos.x * cellSize + cellSize / 2,
             pos.y * cellSize + cellSize / 2
           );
         });
 
-        // Draw main player
+        // Draw main player - Update this part to use gameState.playerEmoji
         if (gameState.playerPos) {
           ctx.font = `${cellSize * 0.8}px Arial`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillStyle = "white";
           ctx.fillText(
-            "🐻",
+            gameState.playerEmoji || "🐻", // Use player's chosen emoji
             gameState.playerPos.x * cellSize + cellSize / 2,
             gameState.playerPos.y * cellSize +
               cellSize / 2 +
@@ -1057,6 +1114,10 @@
         document.getElementById("battle-options").style.display = "block";
         document.getElementById("attack-options").style.display = "none";
         document.getElementById("battle-moves").innerHTML = "";
+
+        // Update the player's emoji in battle screen
+        document.querySelector(".battle-fighter .fighter-emoji").textContent =
+          gameState.playerEmoji || "🐻";
 
         // Reset hearts
         document.getElementById("player-hearts").innerHTML = "❤️❤️❤️";
@@ -1386,9 +1447,21 @@
           // Get player username and update display
           const { data: playerData, error: playerError } = await supabaseClient
             .from("players")
-            .select("username")
+            .select("username, emoji")
             .eq("id", gameState.playerId)
             .single();
+
+          if (playerError) {
+            console.error("Error fetching player data:", playerError);
+            throw playerError;
+          }
+
+          // Set the player's emoji (use bear as default if none set)
+          gameState.playerEmoji = playerData.emoji || "🐻";
+          document.getElementById("player-emoji").textContent =
+            gameState.playerEmoji;
+          document.querySelector(".fighter-emoji").textContent =
+            gameState.playerEmoji; // Update battle screen emoji too
 
           console.log(
             "Player data:",

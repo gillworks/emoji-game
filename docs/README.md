@@ -16,6 +16,7 @@ A real-time multiplayer browser game where players explore a procedurally genera
 - Multiple game servers support
 - Server-based player management
 - Automatic server cleanup for inactive players
+- Customizable player characters (🐻🐸🐵🐨🐷)
 
 ### World
 
@@ -103,6 +104,16 @@ For detailed database information, see [Database Schema](database/schema.md)
 
 - 1/Click: Select and use axe (chops trees when on forest tiles)
 - 2-0: Select other inventory slots
+
+### Character Customization
+
+- Click your character emoji in the status bar to open the emoji selector
+- Choose from available characters:
+  - 🐻 Bear (default)
+  - 🐸 Frog
+  - 🐵 Monkey
+  - 🐨 Koala
+  - 🐷 Pig
 
 ## Technical Requirements
 

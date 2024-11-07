@@ -370,3 +370,26 @@ body {
   align-items: center;
   justify-content: center;
 }
+
+#emoji-selector {
+  position: absolute;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 8px;
+  display: none;
+  gap: 8px;
+  z-index: 1000;
+  margin-top: 8px;
+}
+
+.emoji-option {
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.emoji-option:hover {
+  background: #444;
+}

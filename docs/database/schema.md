@@ -11,6 +11,7 @@ Stores player information
 |--------|------|-------------|
 | id | uuid | Primary key, matches Supabase auth.users id |
 | username | text | Player's username (derived from email) |
+| emoji | text | Player's chosen character emoji (default: 🐻) |
 | created_at | timestamp | When the player record was created |
 
 ### player_positions
