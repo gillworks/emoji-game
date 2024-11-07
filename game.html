@@ -1781,41 +1781,6 @@
         requestAnimationFrame(animatePlayer);
       }
 
-      // Add this function to handle tree chopping
-      function chopTree() {
-        if (!gameState.playerPos || gameState.inBattle) return;
-
-        // Check if axe is selected (slot 1)
-        if (gameState.inventory.selectedSlot !== 1) return;
-
-        const currentTile =
-          gameState.map[gameState.playerPos.y][gameState.playerPos.x];
-
-        // Check if current tile is a forest
-        if (currentTile.emoji === TERRAIN_TYPES.FOREST.emoji) {
-          // Update the map in the database first
-          supabaseClient
-            .from("map_data")
-            .update({ terrain_type: "PLAIN" })
-            .eq("server_id", gameState.serverId)
-            .eq("x", gameState.playerPos.x)
-            .eq("y", gameState.playerPos.y)
-            .then(({ data, error }) => {
-              if (error) {
-                console.error("Error updating map:", error);
-                return;
-              }
-
-              // Change the tile to a plain
-              gameState.map[gameState.playerPos.y][gameState.playerPos.x] =
-                TERRAIN_TYPES.PLAIN;
-
-              // Render the updated map
-              renderMap();
-            });
-        }
-      }
-
       // Update the handleHotbarSelection function
       function handleHotbarSelection(e) {
         // Only handle number keys 1-9 and 0
