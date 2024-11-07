@@ -39,15 +39,27 @@ body {
 }
 
 #status-bar {
-  padding: 10px;
+  padding: 10px 20px;
   background: #333;
   color: #9b9b9b;
   border-radius: 5px;
   display: flex;
-  justify-content: space-around;
+  justify-content: space-between;
   margin: 10px 20px 0 20px;
   font-size: 36px;
   font-weight: bold;
+}
+
+.status-left {
+  display: flex;
+  gap: 30px;
+  align-items: center;
+}
+
+.status-right {
+  display: flex;
+  gap: 30px;
+  align-items: center;
 }
 
 #status-bar span {
@@ -178,18 +190,17 @@ body {
   margin-top: 10px;
 }
 
-.logout-button {
-  padding: 5px 10px;
-  background: #ff6b6b;
-  border: none;
-  border-radius: 5px;
-  color: white;
+.logout-icon {
+  font-size: 32px;
   cursor: pointer;
-  font-size: 14px;
+  transition: transform 0.2s, color 0.2s;
+  padding: 0 10px;
+  color: #9b9b9b;
 }
 
-.logout-button:hover {
-  background: #ff5252;
+.logout-icon:hover {
+  transform: scale(1.1);
+  color: #ffffff;
 }
 
 #loading-screen {

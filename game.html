@@ -5,6 +5,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <link rel="stylesheet" href="styles.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
     <script>
       function getEnvVariable(name) {
         if (window.env && window.env[name]) {
@@ -118,15 +122,22 @@
     </div>
     <div id="game-container">
       <div id="status-bar">
-        <div>Health: <span id="health">100</span></div>
-        <div>Score: <span id="score">0</span></div>
-        <div>
-          Position: (<span id="position-x">-</span>,
-          <span id="position-y">-</span>)
+        <div class="status-left">
+          <div>HP: <span id="health">100</span></div>
+          <div>XP: <span id="score">0</span></div>
         </div>
-        <div>Player: <span id="player-username">-</span></div>
-        <div>
-          <button onclick="handleLogout()" class="logout-button">Logout</button>
+        <div class="status-right">
+          <div>
+            x,y: (<span id="position-x">-</span>,<span id="position-y">-</span>)
+          </div>
+          <div>🐻 <span id="player-username">-</span></div>
+          <div>
+            <i
+              class="fas fa-sign-out-alt logout-icon"
+              onclick="handleLogout()"
+              title="Logout"
+            ></i>
+          </div>
         </div>
       </div>
       <div id="game-map">
