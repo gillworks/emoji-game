@@ -735,13 +735,13 @@
         ctx.fillStyle = "#2a2a2a";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Draw terrain
+        // Draw terrain - reduce font size from 0.6 to 0.8 of cell size
         for (let y = 0; y < gameState.mapHeight; y++) {
           for (let x = 0; x < gameState.mapWidth; x++) {
             const terrain = gameState.map[y][x];
             if (!terrain || !terrain.emoji) continue;
 
-            ctx.font = `${cellSize * 0.6}px Arial`;
+            ctx.font = `${cellSize * 0.8}px Arial`; // Increased from 0.6 to 0.8
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillStyle = "white";
@@ -753,8 +753,8 @@
           }
         }
 
-        // Draw other players
-        ctx.font = `${cellSize * 0.6}px Arial`;
+        // Draw other players - match the same font size as terrain
+        ctx.font = `${cellSize * 0.8}px Arial`; // Increased from 0.6 to 0.8
         gameState.otherPlayers.forEach((pos) => {
           ctx.fillText(
             "🦊",
@@ -763,7 +763,7 @@
           );
         });
 
-        // Draw main player
+        // Draw main player - match the same font size
         if (gameState.playerPos) {
           ctx.fillText(
             "🐻",
@@ -1522,9 +1522,9 @@
         const newMultiplier =
           gameState.viewport.cellSizeMultiplier * zoomFactor;
 
-        // Limit the zoom range (adjust these values as needed)
-        const minZoom = 0.02;
-        const maxZoom = 0.15;
+        // Adjust zoom limits to account for larger emojis
+        const minZoom = 0.02; // Keep minimum zoom the same
+        const maxZoom = 0.12; // Slightly reduced from 0.15 to prevent overlapping
 
         if (newMultiplier >= minZoom && newMultiplier <= maxZoom) {
           gameState.viewport.cellSizeMultiplier = newMultiplier;
