@@ -72,7 +72,8 @@ Stores the terrain type for each coordinate on each server's map
 | server_id | uuid | Foreign key to servers.id |
 | x | integer | X coordinate |
 | y | integer | Y coordinate |
-| terrain_type | text | Type of terrain at this location |
+| terrain_type | text | Current type of terrain at this location |
+| original_terrain_type | text | Original type of terrain (for map resets) |
 
 ### server_players
 
@@ -131,6 +132,13 @@ Removes a player's data from a server:
 ### handle_cleanup_request()
 
 API endpoint for cleanup_player that uses the authenticated user's ID
+
+### reset_server_map(server_id_param UUID)
+
+Resets all tiles on a server back to their original terrain:
+
+- Updates terrain_type to match original_terrain_type for all tiles
+- Only accessible to authenticated users
 
 ## Indexes
 

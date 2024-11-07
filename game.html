@@ -37,7 +37,7 @@
       gameState.inventory = {
         selectedSlot: 1,
         items: {
-          1: "🗡️", // Sword
+          1: "🪓", // Axe (changed from sword)
           2: "🏹", // Bow
           3: "🪄", // Magic wand
           4: "🍖", // Food
@@ -65,6 +65,11 @@
           if (selectedSlot) {
             selectedSlot.classList.add("selected");
             gameState.inventory.selectedSlot = slotNumber;
+
+            // If axe is selected (slot 1), try to chop tree
+            if (slotNumber === 1) {
+              chopTree();
+            }
           }
         }
       }
@@ -93,6 +98,52 @@
 
       // Add this line to your initGame function, right after selecting the first slot
       updateHotbarDisplay();
+
+      // Add this new function to handle tree chopping
+      function chopTree() {
+        if (!gameState.playerPos || gameState.inBattle) return;
+
+        // Check if axe is selected (slot 1)
+        if (gameState.inventory.selectedSlot !== 1) return;
+
+        const currentTile =
+          gameState.map[gameState.playerPos.y][gameState.playerPos.x];
+
+        // Check if current tile is a forest
+        if (currentTile.emoji === TERRAIN_TYPES.FOREST.emoji) {
+          // Update the map in the database first
+          supabaseClient
+            .from("map_data")
+            .update({ terrain_type: "PLAIN" })
+            .eq("server_id", gameState.serverId)
+            .eq("x", gameState.playerPos.x)
+            .eq("y", gameState.playerPos.y)
+            .then(({ data, error }) => {
+              if (error) {
+                console.error("Error updating map:", error);
+                return;
+              }
+
+              // Change the tile to a plain
+              gameState.map[gameState.playerPos.y][gameState.playerPos.x] =
+                TERRAIN_TYPES.PLAIN;
+
+              // Render the updated map
+              renderMap();
+            });
+        }
+      }
+
+      // Add click handler for hotbar slots
+      document.querySelectorAll(".hotbar-slot").forEach((slot) => {
+        slot.addEventListener("click", () => {
+          const slotNumber = parseInt(slot.dataset.slot);
+          if (slotNumber === 1) {
+            // Axe slot
+            chopTree();
+          }
+        });
+      });
     </script>
   </head>
   <body>
@@ -283,7 +334,7 @@
         inventory: {
           selectedSlot: 1,
           items: {
-            1: "🗡️", // Sword
+            1: "🪓", // Axe
             2: "🏹", // Bow
             3: "🪄", // Magic wand
             4: "🍖", // Food
@@ -1222,8 +1273,31 @@
                 chooseAttack("block");
               }
               break;
-            default:
-              return;
+          }
+          return;
+        }
+
+        // Handle hotbar selection (when not in battle)
+        if (key >= "0" && key <= "9") {
+          const slotNumber = key === "0" ? 10 : parseInt(key);
+
+          // Remove selected class from all slots
+          document.querySelectorAll(".hotbar-slot").forEach((slot) => {
+            slot.classList.remove("selected");
+          });
+
+          // Add selected class to the clicked slot
+          const selectedSlot = document.querySelector(
+            `.hotbar-slot[data-slot="${slotNumber}"]`
+          );
+          if (selectedSlot) {
+            selectedSlot.classList.add("selected");
+            gameState.inventory.selectedSlot = slotNumber;
+
+            // If axe is selected (slot 1), try to chop tree
+            if (slotNumber === 1) {
+              chopTree();
+            }
           }
           return;
         }
@@ -1231,7 +1305,7 @@
         // Only process movement if player position exists
         if (!gameState.playerPos) return;
 
-        // Movement controls (when not in battle)
+        // Movement controls
         const newPos = { ...gameState.playerPos };
 
         switch (key) {
@@ -1469,7 +1543,7 @@
           requestAnimationFrame(animatePlayer);
 
           hideLoadingScreen();
-          // Add these two lines after hideLoadingScreen()
+          // Initialize hotbar
           document
             .querySelector('.hotbar-slot[data-slot="1"]')
             .classList.add("selected");
@@ -1706,6 +1780,93 @@
         // Continue the animation loop
         requestAnimationFrame(animatePlayer);
       }
+
+      // Add this function to handle tree chopping
+      function chopTree() {
+        if (!gameState.playerPos || gameState.inBattle) return;
+
+        // Check if axe is selected (slot 1)
+        if (gameState.inventory.selectedSlot !== 1) return;
+
+        const currentTile =
+          gameState.map[gameState.playerPos.y][gameState.playerPos.x];
+
+        // Check if current tile is a forest
+        if (currentTile.emoji === TERRAIN_TYPES.FOREST.emoji) {
+          // Update the map in the database first
+          supabaseClient
+            .from("map_data")
+            .update({ terrain_type: "PLAIN" })
+            .eq("server_id", gameState.serverId)
+            .eq("x", gameState.playerPos.x)
+            .eq("y", gameState.playerPos.y)
+            .then(({ data, error }) => {
+              if (error) {
+                console.error("Error updating map:", error);
+                return;
+              }
+
+              // Change the tile to a plain
+              gameState.map[gameState.playerPos.y][gameState.playerPos.x] =
+                TERRAIN_TYPES.PLAIN;
+
+              // Render the updated map
+              renderMap();
+            });
+        }
+      }
+
+      // Update the handleHotbarSelection function
+      function handleHotbarSelection(e) {
+        // Only handle number keys 1-9 and 0
+        const key = e.key;
+        if (!gameState.inBattle && key >= "0" && key <= "9") {
+          const slotNumber = key === "0" ? 10 : parseInt(key);
+
+          // Remove selected class from all slots
+          document.querySelectorAll(".hotbar-slot").forEach((slot) => {
+            slot.classList.remove("selected");
+          });
+
+          // Add selected class to the clicked slot
+          const selectedSlot = document.querySelector(
+            `.hotbar-slot[data-slot="${slotNumber}"]`
+          );
+          if (selectedSlot) {
+            selectedSlot.classList.add("selected");
+            gameState.inventory.selectedSlot = slotNumber;
+
+            // If axe is selected (slot 1), try to chop tree
+            if (slotNumber === 1) {
+              chopTree();
+            }
+          }
+          return;
+        }
+      }
+
+      // Add click handler for hotbar slots
+      document.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll(".hotbar-slot").forEach((slot) => {
+          slot.addEventListener("click", () => {
+            const slotNumber = parseInt(slot.dataset.slot);
+
+            // Remove selected class from all slots
+            document.querySelectorAll(".hotbar-slot").forEach((s) => {
+              s.classList.remove("selected");
+            });
+
+            // Add selected class to clicked slot
+            slot.classList.add("selected");
+            gameState.inventory.selectedSlot = slotNumber;
+
+            // If axe is selected (slot 1), try to chop tree
+            if (slotNumber === 1) {
+              chopTree();
+            }
+          });
+        });
+      });
     </script>
   </body>
 </html>

@@ -156,11 +156,13 @@ class TerrainGenerator:
             map_data = []
             for y in range(self.height):
                 for x in range(self.width):
+                    terrain = terrain_map[y][x]
                     map_data.append({
                         'server_id': server_id,
                         'x': x,
                         'y': y,
-                        'terrain_type': terrain_map[y][x]
+                        'terrain_type': terrain,
+                        'original_terrain_type': terrain
                     })
             
             # Insert map data in chunks to avoid request size limits

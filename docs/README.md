@@ -21,12 +21,26 @@ A real-time multiplayer browser game where players explore a procedurally genera
 
 - Procedurally generated maps
 - Four terrain types:
-  - 🌳 Forest (Wolf encounters)
+  - 🌳 Forest (Wolf encounters, can be chopped down)
   - 🏔️ Mountains (Leopard encounters)
   - 🌱 Plains (Lion encounters)
   - 🌊 Ocean (Shark encounters)
 - Dynamic map rendering with pan controls
 - Viewport management for large maps
+- Terrain modification system
+- Map reset functionality
+
+### Inventory System
+
+- 10-slot hotbar (keys 1-0)
+- Tool system:
+  - 🪓 Axe (Slot 1): Used to chop down trees
+  - 🏹 Bow (Slot 2)
+  - 🪄 Magic Wand (Slot 3)
+  - 🍖 Food (Slot 4)
+  - 🧪 Potion (Slot 5)
+- Slot selection via number keys or clicking
+- Visual selection feedback
 
 ### Battle System
 
@@ -84,6 +98,11 @@ For detailed database information, see [Database Schema](database/schema.md)
 
 - Click and drag to pan the map
 - Map automatically centers on player
+
+### Tools
+
+- 1/Click: Select and use axe (chops trees when on forest tiles)
+- 2-0: Select other inventory slots
 
 ## Technical Requirements
 
