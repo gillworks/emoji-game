@@ -117,10 +117,26 @@
 
     <script>
       const TERRAIN_TYPES = {
-        FOREST: { emoji: "🌳", encounter: "🐺" },
-        MOUNTAIN: { emoji: "🏔️", encounter: "🐆" },
-        PLAIN: { emoji: "🌱", encounter: "🦁" },
-        OCEAN: { emoji: "🌊", encounter: "🦈" },
+        FOREST: {
+          emoji: "🌳",
+          encounter: "🐺",
+          color: "rgba(76, 175, 80, 0.3)",
+        }, // Transparent green
+        MOUNTAIN: {
+          emoji: "🏔️",
+          encounter: "🐆",
+          color: "rgba(158, 158, 158, 0.3)",
+        }, // Transparent gray
+        PLAIN: {
+          emoji: "🌱",
+          encounter: "🦁",
+          color: "rgba(139, 195, 74, 0.3)",
+        }, // Transparent lime
+        OCEAN: {
+          emoji: "🌊",
+          encounter: "🦈",
+          color: "rgba(33, 150, 243, 0.3)",
+        }, // Transparent blue
       };
 
       let gameState = {
@@ -148,7 +164,7 @@
         mapWidth: 20,
         mapHeight: 20,
         playerAnimation: {
-          bounceOffset: 0
+          bounceOffset: 0,
         },
       };
 
@@ -738,13 +754,18 @@
         ctx.fillStyle = "#2a2a2a";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Draw terrain - reduce font size from 0.6 to 0.8 of cell size
+        // Draw terrain backgrounds and emojis
         for (let y = 0; y < gameState.mapHeight; y++) {
           for (let x = 0; x < gameState.mapWidth; x++) {
             const terrain = gameState.map[y][x];
             if (!terrain || !terrain.emoji) continue;
 
-            ctx.font = `${cellSize * 0.8}px Arial`; // Increased from 0.6 to 0.8
+            // Draw background color
+            ctx.fillStyle = terrain.color;
+            ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+
+            // Draw terrain emoji
+            ctx.font = `${cellSize * 0.8}px Arial`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillStyle = "white";
@@ -756,8 +777,8 @@
           }
         }
 
-        // Draw other players - match the same font size as terrain
-        ctx.font = `${cellSize * 0.8}px Arial`; // Increased from 0.6 to 0.8
+        // Draw other players
+        ctx.font = `${cellSize * 0.8}px Arial`;
         gameState.otherPlayers.forEach((pos) => {
           ctx.fillText(
             "🦊",
@@ -775,7 +796,9 @@
           ctx.fillText(
             "🐻",
             gameState.playerPos.x * cellSize + cellSize / 2,
-            gameState.playerPos.y * cellSize + cellSize / 2 + gameState.playerAnimation.bounceOffset
+            gameState.playerPos.y * cellSize +
+              cellSize / 2 +
+              gameState.playerAnimation.bounceOffset
           );
         }
 
@@ -1543,13 +1566,14 @@
       // Add this new function for the animation
       function animatePlayer() {
         // Create a smooth bounce using sine wave
-        gameState.playerAnimation.bounceOffset = Math.sin(Date.now() * 0.003) * 3;
-        
+        gameState.playerAnimation.bounceOffset =
+          Math.sin(Date.now() * 0.003) * 3;
+
         // Update only the player position
         if (gameState.playerPos) {
-            renderMap();
+          renderMap();
         }
-        
+
         // Continue the animation loop
         requestAnimationFrame(animatePlayer);
       }
