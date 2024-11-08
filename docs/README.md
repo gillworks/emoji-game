@@ -36,12 +36,12 @@ A real-time multiplayer browser game where players explore a procedurally genera
 - 10-slot hotbar (keys 1-0)
 - Tool system:
   - 🪓 Axe (Slot 1): Used to chop down trees
-  - 🏹 Bow (Slot 2)
-  - 🪄 Magic Wand (Slot 3)
-  - 🍖 Food (Slot 4)
-  - 🧪 Potion (Slot 5)
+- Resource stacking:
+  - 🪵 Wood: Obtained from chopping trees (stacks in inventory)
 - Slot selection via number keys or clicking
 - Visual selection feedback
+- Stack counter display
+- Persistent inventory across sessions
 
 ### Battle System
 

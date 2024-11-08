@@ -93,6 +93,21 @@ Tracks which players are on which servers
 | player_id | uuid | Foreign key to players.id |
 | joined_at | timestamp | When player joined server |
 
+### player_inventory
+
+Stores player inventory items and quantities
+| Column | Type | Description |
+|--------|------|-------------|
+| player_id | uuid | Part of composite primary key, foreign key to players.id |
+| slot | integer | Part of composite primary key, slot number (1-10) |
+| item_type | text | Type of item (AXE, WOOD, etc.) |
+| quantity | integer | Stack size for the item (default: 1) |
+
+Available item types:
+
+- AXE (🪓) - Tool for chopping trees
+- WOOD (🪵) - Resource from chopping trees
+
 ## Row Level Security (RLS)
 
 All tables have RLS enabled with appropriate policies:
@@ -128,6 +143,12 @@ All tables have RLS enabled with appropriate policies:
 
 - All authenticated users can view server players
 - Players can join/leave servers they belong to
+
+### player_inventory
+
+- Players can view only their own inventory items
+- Players can insert/update/delete only their own inventory items
+- No other players can view or modify another player's inventory
 
 ## Stored Procedures
 
