@@ -369,6 +369,25 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+}
+
+.slot-content::after {
+  content: attr(data-stack);
+  position: absolute;
+  bottom: -8px;
+  right: -12px;
+  font-size: 14px;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 2px 4px;
+  border-radius: 4px;
+  min-width: 16px;
+  text-align: center;
+  display: none;
+}
+
+.slot-content[data-stack]::after {
+  display: block;
 }
 
 #emoji-selector {
@@ -392,4 +411,29 @@ body {
 
 .emoji-option:hover {
   background: #444;
+}
+
+.collection-message {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 5px;
+  animation: fadeUp 2s ease-out forwards;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+@keyframes fadeUp {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -100%);
+  }
 }
