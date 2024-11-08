@@ -1573,21 +1573,38 @@
             gameState.serverId
           );
 
+          // Add this before the position query
+          console.log("About to check position with params:", {
+            playerId: gameState.playerId,
+            serverId: gameState.serverId,
+          });
+
           // Create initial player position if none exists
           const { data: existingPos, error: posQueryError } =
             await supabaseClient
               .from("player_positions")
               .select("x, y")
-              .eq("player_id", gameState.playerId)
-              .eq("server_id", gameState.serverId)
+              .match({
+                player_id: gameState.playerId,
+                server_id: gameState.serverId,
+              })
               .maybeSingle();
 
-          console.log(
-            "Position query result:",
-            existingPos,
-            "Error:",
-            posQueryError
-          );
+          // Add detailed error logging
+          if (posQueryError) {
+            console.error("Position query error details:", {
+              error: posQueryError,
+              query: {
+                playerId: gameState.playerId,
+                serverId: gameState.serverId,
+              },
+            });
+          }
+
+          console.log("Position query complete:", {
+            data: existingPos,
+            error: posQueryError,
+          });
 
           if (existingPos) {
             console.log("Found existing position:", existingPos);
@@ -1751,37 +1768,11 @@
 
         isCleaningUp = true;
 
-        if (lastActiveInterval) {
-          clearInterval(lastActiveInterval);
-        }
-
         try {
           console.log("Starting leaveServer process...");
 
           // Remove all realtime subscriptions
           await supabaseClient.channel("player_positions").unsubscribe();
-
-          // Get current session
-          const {
-            data: { session },
-          } = await supabaseClient.auth.getSession();
-          if (!session) {
-            console.error("No active session in leaveServer");
-            return;
-          }
-
-          // Delete player position directly
-          const { error: positionError } = await supabaseClient
-            .from("player_positions")
-            .delete()
-            .eq("player_id", gameState.playerId)
-            .eq("server_id", gameState.serverId);
-
-          if (positionError) {
-            console.error("Error removing player position:", positionError);
-          } else {
-            console.log("Successfully deleted position");
-          }
 
           // Delete server_players entry
           const { error: serverPlayerError } = await supabaseClient
