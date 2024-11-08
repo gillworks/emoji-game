@@ -1563,6 +1563,7 @@
           console.log("Server ID set:", gameState.serverId);
 
           await loadMap(gameState.serverId);
+          await setupPlayerSubscriptions();
 
           // Debug log before position check
           console.log(
@@ -2057,6 +2058,9 @@
         if (gameState.playerSubscription) {
           gameState.playerSubscription.unsubscribe();
         }
+        if (gameState.mapSubscription) {
+          gameState.mapSubscription.unsubscribe();
+        }
 
         // Subscribe to player position changes
         gameState.playerSubscription = supabaseClient
@@ -2093,6 +2097,39 @@
             }
           )
           .subscribe();
+
+        // Subscribe to map changes
+        gameState.mapSubscription = supabaseClient
+          .channel("map_changes")
+          .on(
+            "postgres_changes",
+            {
+              event: "UPDATE", // Be more specific about the event we want
+              schema: "public",
+              table: "map_data",
+              filter: `server_id=eq.${gameState.serverId}`,
+            },
+            (payload) => {
+              console.log("Map change received:", payload); // Add debug logging
+              if (!gameState.map) return;
+
+              const { x, y, terrain_type } = payload.new;
+              if (
+                x >= 0 &&
+                x < gameState.mapWidth &&
+                y >= 0 &&
+                y < gameState.mapHeight &&
+                TERRAIN_TYPES[terrain_type]
+              ) {
+                console.log(`Updating map at ${x},${y} to ${terrain_type}`); // Debug log
+                gameState.map[y][x] = TERRAIN_TYPES[terrain_type];
+                renderMap();
+              }
+            }
+          )
+          .subscribe((status) => {
+            console.log("Map subscription status:", status); // Debug subscription status
+          });
       }
     </script>
   </body>
