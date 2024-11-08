@@ -14,6 +14,17 @@ Stores player information
 | emoji | text | Player's chosen character emoji (default: 🐻) |
 | created_at | timestamp | When the player record was created |
 
+### emoji_choices
+
+Stores available emoji choices for players
+| Column | Type | Description |
+|--------|------|-------------|
+| id | serial | Primary key |
+| emoji | text | The emoji character |
+| name | text | Display name for the emoji |
+| enabled | boolean | Whether this emoji is available (default: true) |
+| created_at | timestamp | When the emoji choice was added |
+
 ### player_positions
 
 Stores current position of players on the map

@@ -265,10 +265,41 @@
       function toggleEmojiSelector() {
         const selector = document.getElementById("emoji-selector");
         selector.style.display =
-          selector.style.display === "none" ? "flex" : "none";
+          selector.style.display === "none" ? "grid" : "none";
       }
 
       // Modify the HTML for the player username section to include the emoji selector
+
+      // Add this function after handleEmojiSelect
+      async function loadEmojiChoices() {
+        try {
+          const { data: emojiChoices, error } = await supabaseClient
+            .from("emoji_choices")
+            .select("*")
+            .eq("enabled", true)
+            .order("id");
+
+          if (error) throw error;
+
+          // Get the emoji selector container
+          const selectorContainer = document.getElementById("emoji-selector");
+          selectorContainer.innerHTML = ""; // Clear existing choices
+
+          // Add each emoji choice
+          emojiChoices.forEach((choice) => {
+            const emojiOption = document.createElement("div");
+            emojiOption.className = "emoji-option";
+            emojiOption.onclick = () => handleEmojiSelect(choice.emoji);
+            emojiOption.title = choice.name;
+            emojiOption.textContent = choice.emoji;
+            selectorContainer.appendChild(emojiOption);
+          });
+        } catch (error) {
+          console.error("Error loading emoji choices:", error);
+        }
+      }
+
+      // Replace the emoji selector HTML with a simpler container
     </script>
   </head>
   <body>
@@ -314,23 +345,7 @@
               >🐻</span
             >
             <span id="player-username">-</span>
-            <div id="emoji-selector" style="display: none">
-              <div class="emoji-option" onclick="handleEmojiSelect('🐻')">
-                🐻
-              </div>
-              <div class="emoji-option" onclick="handleEmojiSelect('🐸')">
-                🐸
-              </div>
-              <div class="emoji-option" onclick="handleEmojiSelect('🐵')">
-                🐵
-              </div>
-              <div class="emoji-option" onclick="handleEmojiSelect('🐨')">
-                🐨
-              </div>
-              <div class="emoji-option" onclick="handleEmojiSelect('🐷')">
-                🐷
-              </div>
-            </div>
+            <div id="emoji-selector" style="display: none"></div>
           </div>
           <div>
             <i
@@ -1568,6 +1583,9 @@
             gameState.playerEmoji;
           document.querySelector(".fighter-emoji").textContent =
             gameState.playerEmoji;
+
+          // Load emoji choices here, after player data is set
+          await loadEmojiChoices();
 
           console.log(
             "Player data:",
