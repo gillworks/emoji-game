@@ -110,7 +110,7 @@
       updateHotbarDisplay();
 
       // Add this new function to handle tree chopping
-      function chopTree() {
+      async function chopTree() {
         if (!gameState.playerPos || gameState.inBattle) return;
 
         // Check if axe is selected (slot 1)
@@ -121,59 +121,84 @@
 
         // Check if current tile is a forest
         if (currentTile.emoji === TERRAIN_TYPES.FOREST.emoji) {
-          // Update the map in the database first
-          supabaseClient
-            .from("map_data")
-            .update({ terrain_type: "EMPTY_FOREST" })
-            .eq("server_id", gameState.serverId)
-            .eq("x", gameState.playerPos.x)
-            .eq("y", gameState.playerPos.y)
-            .then(({ data, error }) => {
-              if (error) {
-                console.error("Error updating map:", error);
-                return;
+          try {
+            // Update the map in the database first
+            const { error: mapError } = await supabaseClient
+              .from("map_data")
+              .update({ terrain_type: "EMPTY_FOREST" })
+              .eq("server_id", gameState.serverId)
+              .eq("x", gameState.playerPos.x)
+              .eq("y", gameState.playerPos.y);
+
+            if (mapError) throw mapError;
+
+            // Change the tile to an empty forest
+            gameState.map[gameState.playerPos.y][gameState.playerPos.x] =
+              TERRAIN_TYPES.EMPTY_FOREST;
+
+            // Generate random wood amount (1-3)
+            const woodAmount = Math.floor(Math.random() * 3) + 1;
+
+            // First check if there's an existing wood stack
+            let targetSlot = null;
+            for (let slot = 2; slot <= 10; slot++) {
+              if (gameState.inventory.items[slot] === "🪵") {
+                targetSlot = slot;
+                break;
               }
+            }
 
-              // Change the tile to an empty forest
-              gameState.map[gameState.playerPos.y][gameState.playerPos.x] =
-                TERRAIN_TYPES.EMPTY_FOREST;
-
-              // Generate random wood amount (1-3)
-              const woodAmount = Math.floor(Math.random() * 3) + 1;
-
-              // Find first available slot or existing wood stack
-              let targetSlot = null;
+            // If no existing wood stack, find first empty slot
+            if (!targetSlot) {
               for (let slot = 2; slot <= 10; slot++) {
-                // Check if slot has wood already
-                if (gameState.inventory.items[slot] === "🪵") {
-                  targetSlot = slot;
-                  break;
-                }
-                // Or if it's empty
                 if (!gameState.inventory.items[slot]) {
                   targetSlot = slot;
                   break;
                 }
               }
+            }
 
-              if (targetSlot) {
-                // Add wood to inventory
-                gameState.inventory.items[targetSlot] = "🪵";
-                // Update stack count
-                gameState.inventory.stacks[targetSlot] =
-                  (gameState.inventory.stacks[targetSlot] || 0) + woodAmount;
+            if (targetSlot) {
+              // Add wood to inventory
+              gameState.inventory.items[targetSlot] = "🪵";
 
-                // Show collection message
-                showCollectionMessage(`+${woodAmount} 🪵`);
-              } else {
-                showCollectionMessage("Inventory full!");
-              }
+              // Get current stack amount from database first
+              const { data: currentStack } = await supabaseClient
+                .from("player_inventory")
+                .select("quantity")
+                .eq("player_id", gameState.playerId)
+                .eq("slot", targetSlot)
+                .eq("item_type", "WOOD")
+                .single();
 
-              // Update hotbar display
-              updateHotbarDisplay();
-              // Render the updated map
-              renderMap();
-            });
+              // Calculate new quantity
+              const newQuantity = (currentStack?.quantity || 0) + woodAmount;
+
+              // Update database
+              const { error: invError } = await supabaseClient
+                .from("player_inventory")
+                .upsert({
+                  player_id: gameState.playerId,
+                  slot: targetSlot,
+                  item_type: "WOOD",
+                  quantity: newQuantity,
+                });
+
+              if (invError) throw invError;
+
+              // Update local state after successful database update
+              gameState.inventory.stacks[targetSlot] = newQuantity;
+
+              showCollectionMessage(`+${woodAmount} 🪵`);
+            } else {
+              showCollectionMessage("Inventory full!");
+            }
+
+            updateHotbarDisplay();
+            renderMap();
+          } catch (error) {
+            console.error("Error in chopTree:", error);
+          }
         }
       }
 
@@ -1491,11 +1516,9 @@
 
           // Add demo mode UI adjustments
           if (isDemoMode) {
-            // Hide username display
             document.querySelector(
               "#status-bar div:nth-child(4)"
             ).style.display = "none";
-            // Hide logout button
             document.querySelector(
               "#status-bar div:nth-child(5)"
             ).style.display = "none";
@@ -1518,7 +1541,7 @@
           document.getElementById("player-emoji").textContent =
             gameState.playerEmoji;
           document.querySelector(".fighter-emoji").textContent =
-            gameState.playerEmoji; // Update battle screen emoji too
+            gameState.playerEmoji;
 
           console.log(
             "Player data:",
@@ -1611,10 +1634,28 @@
             }
           }
 
-          console.log("Final gameState.playerPos:", gameState.playerPos);
+          // Load inventory after player is authenticated and server is set up
+          await loadInventory();
 
-          // Subscribe to other players' positions
-          const subscription = supabaseClient
+          // Add inventory subscription
+          supabaseClient
+            .channel("inventory_changes")
+            .on(
+              "postgres_changes",
+              {
+                event: "*",
+                schema: "public",
+                table: "player_inventory",
+                filter: `player_id=eq.${gameState.playerId}`,
+              },
+              (payload) => {
+                loadInventory(); // Reload inventory when changes occur
+              }
+            )
+            .subscribe();
+
+          // Add player position subscription
+          supabaseClient
             .channel("player_positions")
             .on(
               "postgres_changes",
@@ -1669,6 +1710,12 @@
             });
           }
 
+          // Initialize hotbar
+          document
+            .querySelector('.hotbar-slot[data-slot="1"]')
+            .classList.add("selected");
+          updateHotbarDisplay();
+
           initCanvas();
           renderMap();
           updateStatus();
@@ -1678,11 +1725,6 @@
           requestAnimationFrame(animatePlayer);
 
           hideLoadingScreen();
-          // Initialize hotbar
-          document
-            .querySelector('.hotbar-slot[data-slot="1"]')
-            .classList.add("selected");
-          updateHotbarDisplay();
         } catch (error) {
           console.error("Error initializing game:", error);
           hideLoadingScreen();
@@ -1967,6 +2009,40 @@
           });
         });
       });
+
+      // Add this new function to load inventory from database
+      async function loadInventory() {
+        try {
+          const { data, error } = await supabaseClient
+            .from("player_inventory")
+            .select("*")
+            .eq("player_id", gameState.playerId);
+
+          if (error) throw error;
+
+          // Reset inventory (except slot 1 which always has axe)
+          gameState.inventory.items = { 1: "🪓" };
+          gameState.inventory.stacks = {};
+
+          // Load items from database
+          data.forEach((item) => {
+            switch (item.item_type) {
+              case "WOOD":
+                gameState.inventory.items[item.slot] = "🪵";
+                gameState.inventory.stacks[item.slot] = item.quantity;
+                break;
+              case "AXE":
+                gameState.inventory.items[item.slot] = "🪓";
+                break;
+              // Add other item types here as needed
+            }
+          });
+
+          updateHotbarDisplay();
+        } catch (error) {
+          console.error("Error loading inventory:", error);
+        }
+      }
     </script>
   </body>
 </html>
