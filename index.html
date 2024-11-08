@@ -440,33 +440,35 @@
     </div>
 
     <script>
-      const TERRAIN_TYPES = {
-        FOREST: {
-          emoji: "🌳",
-          encounter: "🐺",
-          color: "rgba(76, 175, 80, 0.3)",
-        }, // Transparent green
-        MOUNTAIN: {
-          emoji: "🏔️",
-          encounter: "🐆",
-          color: "rgba(158, 158, 158, 0.3)",
-        }, // Transparent gray
-        PLAIN: {
-          emoji: "🌱",
-          encounter: "🦁",
-          color: "rgba(139, 195, 74, 0.3)",
-        }, // Transparent lime
-        OCEAN: {
-          emoji: "🌊",
-          encounter: "🦈",
-          color: "rgba(33, 150, 243, 0.3)",
-        }, // Transparent blue
-        EMPTY_FOREST: {
-          emoji: "🌱", // Empty space
-          encounter: "🐺", // Keep forest encounters
-          color: "rgba(76, 175, 80, 0.3)", // Same green background as forest
-        },
-      };
+      let TERRAIN_TYPES = {};
+
+      // Replace the loadTerrainTypes function with:
+      async function loadTerrainTypes() {
+        try {
+          const { data, error } = await supabaseClient
+            .from("terrain_types")
+            .select("*");
+
+          if (error) throw error;
+          if (!data || data.length === 0)
+            throw new Error("No terrain types found");
+
+          // Convert array to object format
+          TERRAIN_TYPES = data.reduce((acc, terrain) => {
+            acc[terrain.id] = {
+              emoji: terrain.emoji,
+              encounter: terrain.encounter,
+              color: terrain.color,
+            };
+            return acc;
+          }, {});
+
+          console.log("Terrain types loaded:", TERRAIN_TYPES);
+        } catch (error) {
+          console.error("Error loading terrain types:", error);
+          throw error; // Re-throw to be handled by initGame
+        }
+      }
 
       let gameState = {
         map: [],
@@ -1225,7 +1227,7 @@
 
         // Reset hearts
         document.getElementById("player-hearts").innerHTML = "❤️❤️❤️";
-        document.getElementById("enemy-hearts").innerHTML = "❤️❤️❤️";
+        document.getElementById("enemy-hearts").innerHTML = "❤️��️❤️";
       }
 
       function chooseBattle(choice) {
@@ -1526,9 +1528,12 @@
         updateTileInfo();
       });
 
-      // Modify initGame to handle auth state
+      // Modify initGame to wait for terrain types
       async function initGame() {
         try {
+          // Load terrain types first
+          await loadTerrainTypes();
+
           showLoadingScreen();
 
           const isAuthenticated = await initSupabase();
@@ -1765,7 +1770,6 @@
           hideLoadingScreen();
         } catch (error) {
           console.error("Error initializing game:", error);
-          hideLoadingScreen();
         }
       }
 

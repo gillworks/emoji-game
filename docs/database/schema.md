@@ -33,14 +33,15 @@ Defines the different types of terrain and their associated encounters
 | id | text | Primary key |
 | emoji | text | Emoji representation of terrain |
 | encounter | text | Emoji representation of encounter |
+| color | text | Background color in rgba format |
 
-Available terrain types:
+Example terrain types:
 
-- FOREST (🌳) - Forest with trees
-- EMPTY_FOREST (🌱) - Cleared forest area
-- MOUNTAIN (🏔️) - Mountain terrain
-- PLAIN (🌱) - Plains/grassland
-- OCEAN (🌊) - Ocean/water
+- FOREST (🌳) - Forest with trees, green background
+- EMPTY_FOREST (🌱) - Cleared forest area, green background
+- MOUNTAIN (🏔️) - Mountain terrain, gray background
+- PLAIN (🌱) - Plains/grassland, lime background
+- OCEAN (🌊) - Ocean/water, blue background
 
 ### game_configs
 
