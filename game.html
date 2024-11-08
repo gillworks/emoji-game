@@ -35,7 +35,7 @@
 
       // Add this to your gameState object
       gameState.inventory = {
-        selectedSlot: 1,
+        //selectedSlot: 1,
         items: {
           1: "🪓", // Axe (changed from sword)
           //2: "🏹", // Bow
@@ -475,7 +475,7 @@
           bounceOffset: 0,
         },
         inventory: {
-          selectedSlot: 1,
+          //selectedSlot: 1,
           items: {
             1: "🪓", // Axe
             // 2: "🏹", // Bow
@@ -1711,9 +1711,6 @@
           }
 
           // Initialize hotbar
-          document
-            .querySelector('.hotbar-slot[data-slot="1"]')
-            .classList.add("selected");
           updateHotbarDisplay();
 
           initCanvas();
