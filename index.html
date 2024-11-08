@@ -4,11 +4,18 @@
     <title>Emoji Adventure</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=2" />
+    <!-- Increment v=1 to v=2, etc when you make changes -->
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     />
+    <meta
+      http-equiv="Cache-Control"
+      content="no-cache, no-store, must-revalidate"
+    />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <script>
       function getEnvVariable(name) {
         if (window.env && window.env[name]) {
@@ -374,6 +381,20 @@
         <p>Final Score: <span id="final-score">0</span></p>
         <button id="restart-button" onclick="restartGame()">Play Again</button>
       </div>
+      <div id="tile-info-panel">
+        <div class="hotbar-slot" data-slot="terrain">
+          <div class="hotkey"></div>
+          <div class="slot-content" id="tile-terrain"></div>
+        </div>
+        <div class="hotbar-slot" data-slot="resources">
+          <div class="hotkey"></div>
+          <div class="slot-content" id="tile-resources"></div>
+        </div>
+        <div class="hotbar-slot" data-slot="actions">
+          <div class="hotkey">E</div>
+          <div class="slot-content" id="tile-actions"></div>
+        </div>
+      </div>
       <div id="inventory-hotbar">
         <div class="hotbar-slot" data-slot="1" style="cursor: pointer">
           <div class="hotkey">1</div>
@@ -704,8 +725,9 @@
             });
           }
 
-          // Don't call renderMap here anymore
-          // renderMap();
+          // After map is fully loaded
+          renderMap();
+          updateTileInfo();
         } catch (error) {
           console.error("Error loading map:", error);
           throw error;
@@ -1501,6 +1523,7 @@
         renderMap();
         updateStatus();
         checkEncounter();
+        updateTileInfo();
       });
 
       // Modify initGame to handle auth state
@@ -2122,6 +2145,71 @@
             console.log("Map subscription status:", status); // Debug subscription status
           });
       }
+
+      // Add this function after the renderMap function
+      function updateTileInfo() {
+        if (!gameState.playerPos) {
+          console.log("updateTileInfo: No player position");
+          return;
+        }
+
+        if (!gameState.map || !gameState.map[gameState.playerPos.y]) {
+          console.log("updateTileInfo: Map not loaded properly");
+          return;
+        }
+
+        const currentTile =
+          gameState.map[gameState.playerPos.y][gameState.playerPos.x];
+        console.log("updateTileInfo: Current tile:", currentTile); // Debug log
+
+        // Update terrain
+        const terrainDisplay = document.getElementById("tile-terrain");
+        if (terrainDisplay) {
+          terrainDisplay.textContent = currentTile.emoji;
+          console.log("updateTileInfo: Set terrain to:", currentTile.emoji); // Debug log
+        }
+
+        // Update resources
+        const resourcesDisplay = document.getElementById("tile-resources");
+        let resources = "";
+
+        if (currentTile.emoji === TERRAIN_TYPES.FOREST.emoji) {
+          resources = "🪵";
+          console.log(
+            "updateTileInfo: Forest tile detected, showing wood resource"
+          ); // Debug log
+        }
+        if (resourcesDisplay) {
+          resourcesDisplay.textContent = resources;
+        }
+
+        // Update actions
+        const actionsDisplay = document.getElementById("tile-actions");
+        let actions = "";
+
+        if (
+          currentTile.emoji === TERRAIN_TYPES.FOREST.emoji &&
+          gameState.inventory.selectedSlot === 1
+        ) {
+          actions = "🪓";
+          console.log(
+            "updateTileInfo: Forest tile with axe selected, showing chop action"
+          ); // Debug log
+        }
+        if (actionsDisplay) {
+          actionsDisplay.textContent = actions;
+        }
+      }
+
+      // Add this line to the end of the movement handler in the keydown event listener
+      // (right after checkEncounter())
+      updateTileInfo();
+
+      // Also add it to the end of initGame() before hideLoadingScreen()
+      updateTileInfo();
+
+      // Add it to chopTree() after renderMap()
+      updateTileInfo();
     </script>
   </body>
 </html>

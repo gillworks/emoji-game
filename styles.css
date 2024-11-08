@@ -437,3 +437,39 @@ body {
     transform: translate(-50%, -100%);
   }
 }
+
+#tile-info-panel {
+  display: flex;
+  gap: 4px;
+  margin: 0 auto 10px auto;
+  width: fit-content;
+}
+
+#tile-info-panel .hotbar-slot {
+  width: 60px;
+  height: 60px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid #444;
+  border-radius: 6px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#tile-info-panel .hotbar-slot:hover {
+  border-color: #666;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+#tile-info-panel .slot-content {
+  font-size: 32px;
+}
+
+#tile-info-panel .hotkey {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  font-size: 12px;
+  color: #999;
+}
