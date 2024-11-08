@@ -1828,6 +1828,11 @@
         try {
           showLoadingScreen();
 
+          // Clean up subscriptions
+          if (gameState.playerSubscription) {
+            await gameState.playerSubscription.unsubscribe();
+          }
+
           // Clean up game state
           await leaveServer();
 
@@ -1852,6 +1857,7 @@
               isDragging: false,
               lastX: 0,
               lastY: 0,
+              cellSizeMultiplier: isDemoMode ? 0.085 : 0.04,
             },
             playerId: null,
             otherPlayers: new Map(),
@@ -1859,6 +1865,10 @@
             serverId: null,
             mapWidth: 20,
             mapHeight: 20,
+            playerAnimation: {
+              bounceOffset: 0,
+            },
+            playerSubscription: null,
           };
 
           // Reset username display
@@ -2039,6 +2049,50 @@
         } catch (error) {
           console.error("Error loading inventory:", error);
         }
+      }
+
+      // Add this function to handle player subscriptions
+      async function setupPlayerSubscriptions() {
+        // Unsubscribe from any existing subscriptions
+        if (gameState.playerSubscription) {
+          gameState.playerSubscription.unsubscribe();
+        }
+
+        // Subscribe to player position changes
+        gameState.playerSubscription = supabaseClient
+          .channel("player_positions")
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "player_positions",
+              filter: `server_id=eq.${gameState.serverId}`,
+            },
+            (payload) => {
+              if (!gameState.playerPos) return; // Don't process if player not initialized
+
+              const position = payload.new;
+              // Don't update our own position from the subscription
+              if (position.player_id === gameState.playerId) return;
+
+              switch (payload.eventType) {
+                case "INSERT":
+                case "UPDATE":
+                  gameState.otherPlayers.set(position.player_id, {
+                    x: position.x,
+                    y: position.y,
+                    emoji: position.emoji,
+                  });
+                  break;
+                case "DELETE":
+                  gameState.otherPlayers.delete(position.player_id);
+                  break;
+              }
+              renderMap();
+            }
+          )
+          .subscribe();
       }
     </script>
   </body>
