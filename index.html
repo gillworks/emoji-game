@@ -42,14 +42,7 @@
 
       // Add this to your gameState object
       gameState.inventory = {
-        //selectedSlot: 1,
-        items: {
-          1: "🪓", // Axe (changed from sword)
-          //2: "🏹", // Bow
-          //3: "🪄", // Magic wand
-          //4: "🍖", // Food
-          //5: "🧪", // Potion
-        },
+        items: {},
         stacks: {},
       };
 
@@ -74,8 +67,8 @@
             selectedSlot.classList.add("selected");
             gameState.inventory.selectedSlot = slotNumber;
 
-            // If axe is selected (slot 1), try to chop tree
-            if (slotNumber === 1) {
+            // Only try to chop if the selected slot contains an axe
+            if (gameState.inventory.items[slotNumber] === "🪓") {
               chopTree();
             }
           }
@@ -120,8 +113,10 @@
       async function chopTree() {
         if (!gameState.playerPos || gameState.inBattle) return;
 
-        // Check if axe is selected (slot 1)
-        if (gameState.inventory.selectedSlot !== 1) return;
+        // Check if selected slot has an axe
+        const selectedItem =
+          gameState.inventory.items[gameState.inventory.selectedSlot];
+        if (selectedItem !== "🪓") return;
 
         const currentTile =
           gameState.map[gameState.playerPos.y][gameState.playerPos.x];
@@ -226,8 +221,18 @@
       document.querySelectorAll(".hotbar-slot").forEach((slot) => {
         slot.addEventListener("click", () => {
           const slotNumber = parseInt(slot.dataset.slot);
-          if (slotNumber === 1) {
-            // Axe slot
+
+          // Remove selected class from all slots
+          document.querySelectorAll(".hotbar-slot").forEach((s) => {
+            s.classList.remove("selected");
+          });
+
+          // Add selected class to clicked slot
+          slot.classList.add("selected");
+          gameState.inventory.selectedSlot = slotNumber;
+
+          // Only try to chop if this slot contains an axe
+          if (gameState.inventory.items[slotNumber] === "🪓") {
             chopTree();
           }
         });
@@ -498,14 +503,7 @@
           bounceOffset: 0,
         },
         inventory: {
-          //selectedSlot: 1,
-          items: {
-            1: "🪓", // Axe
-            // 2: "🏹", // Bow
-            // 3: "🪄", // Magic wand
-            // 4: "🍖", // Food
-            // 5: "🧪", // Potion
-          },
+          items: {},
           stacks: {},
         },
       };
@@ -1227,7 +1225,7 @@
 
         // Reset hearts
         document.getElementById("player-hearts").innerHTML = "❤️❤️❤️";
-        document.getElementById("enemy-hearts").innerHTML = "❤️��️❤️";
+        document.getElementById("enemy-hearts").innerHTML = "❤️❤️❤️";
       }
 
       function chooseBattle(choice) {
@@ -1466,8 +1464,8 @@
             selectedSlot.classList.add("selected");
             gameState.inventory.selectedSlot = slotNumber;
 
-            // If axe is selected (slot 1), try to chop tree
-            if (slotNumber === 1) {
+            // If axe is selected in any slot, try to chop tree
+            if (gameState.inventory.items[slotNumber] === "🪓") {
               chopTree();
             }
           }
@@ -2004,12 +2002,11 @@
             selectedSlot.classList.add("selected");
             gameState.inventory.selectedSlot = slotNumber;
 
-            // If axe is selected (slot 1), try to chop tree
-            if (slotNumber === 1) {
+            // Only try to chop if the selected slot contains an axe
+            if (gameState.inventory.items[slotNumber] === "🪓") {
               chopTree();
             }
           }
-          return;
         }
       }
 
@@ -2028,8 +2025,8 @@
             slot.classList.add("selected");
             gameState.inventory.selectedSlot = slotNumber;
 
-            // If axe is selected (slot 1), try to chop tree
-            if (slotNumber === 1) {
+            // Only try to chop if this slot contains an axe
+            if (gameState.inventory.items[slotNumber] === "🪓") {
               chopTree();
             }
           });
@@ -2046,8 +2043,8 @@
 
           if (error) throw error;
 
-          // Reset inventory (except slot 1 which always has axe)
-          gameState.inventory.items = { 1: "🪓" };
+          // Reset inventory completely (remove hardcoded axe)
+          gameState.inventory.items = {};
           gameState.inventory.stacks = {};
 
           // Load items from database
@@ -2059,6 +2056,7 @@
                 break;
               case "AXE":
                 gameState.inventory.items[item.slot] = "🪓";
+                gameState.inventory.stacks[item.slot] = item.quantity;
                 break;
               // Add other item types here as needed
             }
