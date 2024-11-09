@@ -34,6 +34,12 @@ A real-time multiplayer browser game where players explore a procedurally genera
 ### Inventory System
 
 - 10-slot hotbar (keys 1-0)
+- Inventory management features:
+  - Click and drag items between slots
+  - Auto-stacking of identical items
+  - Visual feedback for selected items
+  - Stack size display
+  - Maximum stack sizes per item type
 - Tool system with multiple tools:
   - 🪓 Axe: Used to chop trees for wood (3 hits to fell a tree)
   - ⛏️ Pickaxe: Used to mine stone from mountains
@@ -191,6 +197,18 @@ For detailed database information, see [Database Schema](database/schema.md)
 - ↑/↓: Navigate structures
 - B: Build selected structure
 - ESC: Close building menu
+
+### Inventory Management
+
+- Click an item to select it for moving
+- Click another slot to:
+  - Move the item there if empty
+  - Stack with matching items (if stackable)
+  - Swap with different items
+- Click the same slot again to cancel move
+- Numbers 1-0: Quick select inventory slots
+- Visual feedback shows selected items with green highlight
+- Stack counts shown in bottom-right of slots
 
 ## Technical Requirements
 

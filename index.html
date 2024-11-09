@@ -4,7 +4,7 @@
     <title>Emoji Adventure</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
-    <link rel="stylesheet" href="styles.css?v=12" />
+    <link rel="stylesheet" href="styles.css?v=14" />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
@@ -82,13 +82,23 @@
           if (slotElement) {
             const item = gameState.inventory.items[slot] || "";
             const stack = gameState.inventory.stacks[slot];
-            slotElement.textContent = item;
-
-            // Set or remove the data-stack attribute
-            if (stack) {
-              slotElement.setAttribute("data-stack", stack);
-            } else {
-              slotElement.removeAttribute("data-stack");
+            const currentStack = slotElement.getAttribute('data-stack');
+            
+            // Only update if content has actually changed
+            if (slotElement.textContent !== item || 
+                (currentStack !== (stack ? stack.toString() : null))) {
+              
+              // Use requestAnimationFrame for smooth updates
+              requestAnimationFrame(() => {
+                slotElement.textContent = item;
+                
+                // Update stack count
+                if (stack) {
+                  slotElement.setAttribute("data-stack", stack);
+                } else {
+                  slotElement.removeAttribute("data-stack");
+                }
+              });
             }
           }
         }
@@ -2130,6 +2140,7 @@
           }
         }
 
+        // Replace the loadInventory function with this version
         async function loadInventory() {
           try {
             const { data, error } = await supabaseClient
@@ -2139,9 +2150,9 @@
 
             if (error) throw error;
 
-            // Reset inventory
-            gameState.inventory.items = {};
-            gameState.inventory.stacks = {};
+            // Create a new inventory state
+            const newItems = {};
+            const newStacks = {};
 
             // Load items from database
             for (const item of data) {
@@ -2158,12 +2169,17 @@
               }
 
               if (itemData) {
-                gameState.inventory.items[item.slot] = itemData.emoji;
-                gameState.inventory.stacks[item.slot] = item.quantity;
+                newItems[item.slot] = itemData.emoji;
+                newStacks[item.slot] = item.quantity;
               }
             }
 
-            updateHotbarDisplay();
+            // Update game state with new inventory
+            gameState.inventory.items = newItems;
+            gameState.inventory.stacks = newStacks;
+
+            // Update display
+            requestAnimationFrame(updateHotbarDisplay);
           } catch (error) {
             console.error("Error loading inventory:", error);
           }
@@ -2375,17 +2391,6 @@
           if (!gameState.currentResource) return;
 
           try {
-            // Clear the UI and state BEFORE making the request
-            const actionsDisplay = document.getElementById("tile-actions");
-            const resourcesDisplay = document.getElementById("tile-resources");
-            if (actionsDisplay) {
-              actionsDisplay.textContent = "";
-            }
-            if (resourcesDisplay) {
-              resourcesDisplay.textContent = "";
-            }
-            gameState.currentResource = null;
-
             const { data, error } = await supabaseClient.rpc('collect_resource', {
               p_player_id: gameState.playerId,
               p_server_id: gameState.serverId,
@@ -2395,17 +2400,20 @@
 
             if (error) throw error;
 
+            // Add this line to log debug info
+            if (data.debug) {
+              console.log('Resource collection debug info:', data.debug);
+            }
+
             if (data.success) {
               showCollectionMessage(data.message);
               await loadInventory();
             } else {
               showCollectionMessage(data.message);
-              // Only re-check resources if collection failed
               await checkForResources();
             }
           } catch (error) {
             console.error('Error collecting resource:', error);
-            // Re-check resources on error
             await checkForResources();
           }
         }
@@ -2654,6 +2662,78 @@
           document.getElementById("recipe-details").innerHTML = "";
           document.querySelectorAll(".recipe-item").forEach(item => item.classList.remove("selected"));
         }
+
+        // After the gameState declaration, add selectedSlotForMove
+        let selectedSlotForMove = null;
+
+        // Add these functions after updateHotbarDisplay()
+        function selectSlotForMove(slot) {
+          // Clear previous selection
+          document.querySelectorAll('.hotbar-slot').forEach(s => {
+            s.classList.remove('move-source');
+          });
+
+          if (selectedSlotForMove === slot) {
+            // Clicking same slot again cancels the move
+            selectedSlotForMove = null;
+          } else {
+            selectedSlotForMove = slot;
+            // Highlight the selected slot
+            document.querySelector(`.hotbar-slot[data-slot="${slot}"]`).classList.add('move-source');
+          }
+        }
+
+        async function moveItem(fromSlot, toSlot) {
+          try {
+            const { data, error } = await supabaseClient.rpc('move_inventory_item', {
+              p_player_id: gameState.playerId,
+              p_from_slot: fromSlot,
+              p_to_slot: toSlot
+            });
+
+            if (error) throw error;
+
+            if (data.success) {
+              await loadInventory();
+              showCollectionMessage(data.message);
+            } else {
+              showCollectionMessage(data.message);
+            }
+          } catch (error) {
+            console.error('Error moving item:', error);
+            showCollectionMessage('Failed to move item');
+          }
+        }
+
+        // Replace the hotbar slot click handler with this updated version
+        document.querySelectorAll('.hotbar-slot').forEach(slot => {
+          slot.addEventListener('click', async () => {
+            const slotNumber = parseInt(slot.dataset.slot);
+
+            if (selectedSlotForMove !== null) {
+              // If we already have a slot selected, handle the move
+              if (selectedSlotForMove !== slotNumber) {
+                await moveItem(selectedSlotForMove, slotNumber);
+              }
+              // Clear selection
+              selectedSlotForMove = null;
+              document.querySelectorAll('.hotbar-slot').forEach(s => {
+                s.classList.remove('move-source');
+              });
+            } else if (gameState.inventory.items[slotNumber]) {
+              // If clicking a slot with an item, start move operation
+              selectSlotForMove(slotNumber);
+            } else {
+              // Regular slot selection for item use
+              document.querySelectorAll('.hotbar-slot').forEach(s => {
+                s.classList.remove('selected');
+              });
+              slot.classList.add('selected');
+              gameState.inventory.selectedSlot = slotNumber;
+              useItem();
+            }
+          });
+        });
     </script>
   </body>
 </html>

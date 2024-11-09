@@ -346,6 +346,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .hotbar-slot:hover {
@@ -372,6 +373,7 @@ body {
   align-items: center;
   justify-content: center;
   position: relative;
+  transition: transform 0.2s;
 }
 
 .slot-content::after {
@@ -789,4 +791,15 @@ input:checked + .toggle-slider:before {
   padding: 10px;
   margin: 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Add these styles for inventory organization */
+.hotbar-slot.move-source {
+  border-color: #4caf50;
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+}
+
+.hotbar-slot.move-source .slot-content {
+  transform: scale(1.1);
+  transition: transform 0.2s;
 }
