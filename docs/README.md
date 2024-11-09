@@ -97,6 +97,23 @@ A real-time multiplayer browser game where players explore a procedurally genera
 - Structure ownership tracking
 - Safe zones (no encounters in structures)
 
+### Resource System
+
+- Random resource spawning based on terrain type:
+  - 🌱 Plains: Stones (15% chance)
+  - 🌳 Forest: Mushrooms (5% chance), Wood (15% chance)
+  - 🏔️ Mountains: Stones (20% chance), Crystals (5% chance)
+- Press 'E' to collect resources
+- Automatic resource respawning:
+  - Resources respawn periodically (every 5 minutes)
+  - Configurable spawn rates and intervals
+  - Resources can be collected by any player
+  - Real-time resource updates across all players
+- Inventory stacking system:
+  - Resources automatically stack in inventory
+  - Stack sizes configurable per item type
+  - Visual feedback when collecting items
+
 ### Technical Features
 
 - Real-time database with Supabase

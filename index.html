@@ -499,6 +499,7 @@
             selectedStructureIndex: -1,
             structures: []
           },
+          currentResource: null,
         };
 
         let lastActiveInterval;
@@ -1457,6 +1458,13 @@
             return; // Don't process other keys while crafting is open
           }
 
+          // Handle resource collection with E key - MOVED HERE
+          if (key === 'e' && !gameState.inBattle) {
+            await collectResource();
+            e.preventDefault();
+            return;
+          }
+
           // Handle menu toggles
           if (key === "b") {
             openBuildMenu();
@@ -1742,8 +1750,10 @@
           isCleaningUp = true;
 
           try {
-
             // Remove all realtime subscriptions
+            if (gameState.resourceChannel) {
+              await gameState.resourceChannel.unsubscribe();
+            }
             await supabaseClient.channel("player_positions").unsubscribe();
 
             // Delete server_players entry
@@ -2102,93 +2112,123 @@
         }
 
         async function setupPlayerSubscriptions() {
-          // Unsubscribe from any existing subscriptions
-          if (gameState.playerSubscription) {
-            gameState.playerSubscription.unsubscribe();
-          }
-          if (gameState.mapSubscription) {
-            gameState.mapSubscription.unsubscribe();
-          }
+          try {
+            // Unsubscribe from any existing subscriptions
+            if (gameState.playerSubscription) {
+              gameState.playerSubscription.unsubscribe();
+            }
+            if (gameState.resourceChannel) {
+              gameState.resourceChannel.unsubscribe();
+            }
 
-          // Subscribe to player position changes
-          gameState.playerSubscription = supabaseClient
-            .channel("player_positions")
-            .on(
-              "postgres_changes",
-              {
-                event: "*",
-                schema: "public",
-                table: "player_positions",
-                filter: `server_id=eq.${gameState.serverId}`,
-              },
-              async (payload) => {
-                if (!gameState.playerPos) return;
+            // Subscribe to player position changes
+            gameState.playerSubscription = supabaseClient
+              .channel("player_positions")
+              .on(
+                "postgres_changes",
+                {
+                  event: "*",
+                  schema: "public",
+                  table: "player_positions",
+                  filter: `server_id=eq.${gameState.serverId}`,
+                },
+                async (payload) => {
+                  if (!gameState.playerPos) return;
 
-                const position = payload.new;
-                if (position.player_id === gameState.playerId) return;
+                  const position = payload.new;
+                  if (position.player_id === gameState.playerId) return;
 
-                // Get player's emoji from players table
-                const { data: playerData, error: playerError } = await supabaseClient
-                  .from("players")
-                  .select("emoji")
-                  .eq("id", position.player_id)
-                  .single();
+                  // Get player's emoji from players table
+                  const { data: playerData, error: playerError } = await supabaseClient
+                    .from("players")
+                    .select("emoji")
+                    .eq("id", position.player_id)
+                    .single();
 
-                if (playerError) {
-                  console.error("Error fetching player emoji:", playerError);
-                  return;
-                }
+                  if (playerError) {
+                    console.error("Error fetching player emoji:", playerError);
+                    return;
+                  }
 
-                switch (payload.eventType) {
-                  case "INSERT":
-                  case "UPDATE":
-                    gameState.otherPlayers.set(position.player_id, {
-                      x: position.x,
-                      y: position.y,
-                      emoji: playerData.emoji || "🐻", // Use bear as fallback
-                    });
-                    break;
-                  case "DELETE":
-                    gameState.otherPlayers.delete(position.player_id);
-                    break;
-                }
-                renderMap();
-              }
-            )
-            .subscribe();
-
-          // Subscribe to map changes
-          gameState.mapSubscription = supabaseClient
-            .channel("map_changes")
-            .on(
-              "postgres_changes",
-              {
-                event: "UPDATE", // Be more specific about the event we want
-                schema: "public",
-                table: "map_data",
-                filter: `server_id=eq.${gameState.serverId}`,
-              },
-              (payload) => {
-                if (!gameState.map) return;
-
-                const { x, y, terrain_type } = payload.new;
-                if (
-                  x >= 0 &&
-                  x < gameState.mapWidth &&
-                  y >= 0 &&
-                  y < gameState.mapHeight &&
-                  TERRAIN_TYPES[terrain_type]
-                ) {
-                  console.log(`Updating map at ${x},${y} to ${terrain_type}`);
-                  gameState.map[y][x] = TERRAIN_TYPES[terrain_type];
+                  switch (payload.eventType) {
+                    case "INSERT":
+                    case "UPDATE":
+                      gameState.otherPlayers.set(position.player_id, {
+                        x: position.x,
+                        y: position.y,
+                        emoji: playerData.emoji || "🐻", // Use bear as fallback
+                      });
+                      break;
+                    case "DELETE":
+                      gameState.otherPlayers.delete(position.player_id);
+                      break;
+                  }
                   renderMap();
                 }
-              }
-            )
-            .subscribe((status) => {
-              console.log("Map subscription status:", status); // Debug subscription status
-            });
+              )
+              .subscribe();
+
+            // Set up resource spawns subscription
+            gameState.resourceChannel = supabaseClient
+              .channel('resource_changes')
+              .on(
+                'postgres_changes',
+                {
+                  event: '*',
+                  schema: 'public',
+                  table: 'resource_spawns',
+                  filter: `server_id=eq.${gameState.serverId}`
+                },
+                async (payload) => {
+                  console.log('Resource change event:', payload.eventType, payload);
+                  
+                  // Only process if we're on a tile
+                  if (!gameState.playerPos) return;
+
+                  const currentX = gameState.playerPos.x;
+                  const currentY = gameState.playerPos.y;
+
+                  // Handle DELETE
+                  if (payload.eventType === 'DELETE' && 
+                      payload.old && 
+                      payload.old.x === currentX && 
+                      payload.old.y === currentY) {
+                    console.log('Resource deleted at current position, clearing display');
+                    // Clear the resource display immediately
+                    gameState.currentResource = null;
+                    const actionsDisplay = document.getElementById("tile-actions");
+                    if (actionsDisplay) {
+                      actionsDisplay.textContent = "";
+                    }
+                  }
+                  // Handle INSERT
+                  else if (payload.eventType === 'INSERT' && 
+                           payload.new && 
+                           payload.new.x === currentX && 
+                           payload.new.y === currentY) {
+                    console.log('New resource inserted at current position, updating display');
+                    await checkForResources();
+                  }
+                }
+              )
+              .subscribe();
+
+            console.log('Subscriptions set up successfully');
+          } catch (error) {
+            console.error('Error setting up subscriptions:', error);
+          }
         }
+
+        // Add visibility change handler outside of setupPlayerSubscriptions
+        document.addEventListener('visibilitychange', async () => {
+          if (document.visibilityState === 'visible') {
+            console.log('Tab became visible, refreshing resource display');
+            // Re-check resources when tab becomes visible
+            if (gameState.playerPos) {
+              await checkForResources();
+            }
+          }
+        });
 
         function updateTileInfo() {
           if (!gameState.playerPos) {
@@ -2199,8 +2239,7 @@
             return;
           }
 
-          const currentTile =
-            gameState.map[gameState.playerPos.y][gameState.playerPos.x];
+          const currentTile = gameState.map[gameState.playerPos.y][gameState.playerPos.x];
 
           // Update terrain
           const terrainDisplay = document.getElementById("tile-terrain");
@@ -2208,25 +2247,77 @@
             terrainDisplay.textContent = currentTile.emoji;
           }
 
-          // Update resources
-          const resourcesDisplay = document.getElementById("tile-resources");
-          let resources = "";
+          // Check for resources at current position
+          checkForResources();
+        }
 
-          if (currentTile.emoji === TERRAIN_TYPES.FOREST.emoji) {
-            resources = "🪵";
-          }
-          if (resourcesDisplay) {
-            resourcesDisplay.textContent = resources;
-          }
+        // Add new function to check for resources
+        async function checkForResources() {
+          try {
+            const { data: resources, error } = await supabaseClient
+              .from('resource_spawns')
+              .select(`
+                *,
+                items:item_id (emoji, name)
+              `)
+              .eq('server_id', gameState.serverId)
+              .eq('x', gameState.playerPos.x)
+              .eq('y', gameState.playerPos.y)
+              .maybeSingle();
 
-          // Update actions - for now, always empty
-          const actionsDisplay = document.getElementById("tile-actions");
-          if (actionsDisplay) {
-            actionsDisplay.textContent = "";
+            if (error) throw error;
+
+            // Update actions display
+            const actionsDisplay = document.getElementById("tile-actions");
+            if (actionsDisplay) {
+              if (resources) {
+                gameState.currentResource = resources;
+                actionsDisplay.textContent = resources.items.emoji;
+              } else {
+                gameState.currentResource = null;
+                actionsDisplay.textContent = "";
+              }
+            }
+          } catch (error) {
+            console.error('Error checking resources:', error);
           }
         }
 
-        updateTileInfo();
+        // Update the resource collection handler
+        async function collectResource() {
+          if (!gameState.currentResource) return;
+
+          try {
+            // Clear the UI immediately
+            const actionsDisplay = document.getElementById("tile-actions");
+            if (actionsDisplay) {
+              actionsDisplay.textContent = "";
+            }
+            gameState.currentResource = null;
+
+            const { data, error } = await supabaseClient.rpc('collect_resource', {
+              p_player_id: gameState.playerId,
+              p_server_id: gameState.serverId,
+              p_x: gameState.playerPos.x,
+              p_y: gameState.playerPos.y
+            });
+
+            if (error) throw error;
+
+            if (data.success) {
+              showCollectionMessage(data.message);
+              await loadInventory();
+            } else {
+              showCollectionMessage(data.message);
+              // Re-check resources to ensure UI is in sync
+              await checkForResources();
+            }
+          } catch (error) {
+            console.error('Error collecting resource:', error);
+            // Re-check resources on error to ensure UI is in sync
+            await checkForResources();
+          }
+        }
 
         function navigateRecipes(direction) {
           const recipes = gameState.crafting.recipes;

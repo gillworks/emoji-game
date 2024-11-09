@@ -45,6 +45,7 @@ Defines the different types of terrain and their associated encounters
 | emoji | text | Emoji representation of terrain |
 | encounter | text | Encounter emoji (null for safe zones) |
 | color | text | Background color in rgba format |
+| spawn_items | jsonb | Array of possible spawns with chances |
 
 Example terrain types:
 
@@ -53,6 +54,15 @@ Example terrain types:
 - MOUNTAIN (🏔️) - Mountain terrain, gray background
 - PLAIN (🌱) - Plains/grassland, lime background
 - OCEAN (🌊) - Ocean/water, blue background
+
+Example spawn_items format:
+
+```json
+[
+  { "item_id": "WOOD", "chance": 15 },
+  { "item_id": "MUSHROOMS", "chance": 5 }
+]
+```
 
 ### game_configs
 
@@ -181,6 +191,18 @@ Defines buildable structures in the game
 | allowed_terrain | text | What terrain type it can be built on |
 | created_at | timestamp | When the structure was added |
 
+### resource_spawns
+
+Tracks spawned resources on the map
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| server_id | uuid | Foreign key to servers.id |
+| x | integer | X coordinate |
+| y | integer | Y coordinate |
+| item_id | text | Foreign key to items.id |
+| created_at | timestamp | When the resource spawned |
+
 ## Row Level Security (RLS)
 
 All tables have RLS enabled with appropriate policies:
@@ -237,6 +259,11 @@ All tables have RLS enabled with appropriate policies:
 
 - All authenticated users can view recipes and ingredients
 - Only admins can modify recipes
+
+### resource_spawns
+
+- All authenticated users can view resource spawns
+- Only admins can modify resource spawns
 
 ## Stored Procedures
 
@@ -311,10 +338,58 @@ Now includes structure metadata
 
 ### terrain_types (Updated)
 
-Now supports safe zones
+Now includes spawn configuration
 | Column | Type | Description |
 |--------|------|-------------|
-| encounter | text | Emoji for encounters (null for safe zones like structures) |
+| id | text | Primary key |
+| emoji | text | Visual representation |
+| encounter | text | Encounter emoji |
+| color | text | Background color |
+| spawn_items | jsonb | Array of possible spawns with chances |
+
+Example spawn_items format:
+
+```json
+[
+  { "item_id": "WOOD", "chance": 15 },
+  { "item_id": "MUSHROOMS", "chance": 5 }
+]
+```
+
+### try_spawn_resource(p_server_id UUID, p_x INTEGER, p_y INTEGER)
+
+Attempts to spawn a resource at the given location:
+
+- Gets terrain type at location
+- Gets possible spawns for that terrain from spawn_items
+- Rolls chance for each possible item
+- Creates resource if successful
+
+### collect_resource(p_player_id UUID, p_server_id UUID, p_x INTEGER, p_y INTEGER)
+
+Handles resource collection:
+
+- Removes resource from map if it exists
+- Gets item details (emoji, name, max_stack)
+- Attempts to stack with existing inventory items
+- Creates new stack if needed
+- Returns success/failure message with item details
+
+### spawn_resources_periodically(p_server_id UUID, p_chance FLOAT)
+
+Handles periodic resource spawning:
+
+- Checks if spawning is enabled in game_configs
+- Uses configured spawn chance if available
+- Finds all empty tiles (no current resource)
+- Attempts to spawn resources based on chance
+- Called by cron job every X minutes (configurable)
+
+## Game Configurations
+
+### resource_spawning
+
+Controls resource spawning behavior:
 
 ## Indexes
 
