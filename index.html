@@ -130,8 +130,6 @@
             showCollectionMessage(data.message);
             await loadInventory();
             renderMap();
-          } else {
-            console.error("Action failed:", data.message);
           }
         } catch (error) {
           console.error("Error in useItem:", error);
