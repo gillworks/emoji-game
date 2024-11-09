@@ -112,13 +112,58 @@ Stores player inventory items and quantities
 |--------|------|-------------|
 | player_id | uuid | Part of composite primary key, foreign key to players.id |
 | slot | integer | Part of composite primary key, slot number (1-10) |
-| item_type | text | Type of item (AXE, WOOD, etc.) |
-| quantity | integer | Stack size for the item (default: 1) |
+| item_id | text | Foreign key to items.id |
+| quantity | integer | Stack size for the item |
 
-Available item types:
+### items
 
-- AXE (🪓) - Tool for chopping trees
-- WOOD (🪵) - Resource from chopping trees
+Stores all available items in the game
+| Column | Type | Description |
+|--------|------|-------------|
+| id | text | Primary key (e.g., 'AXE', 'WOOD') |
+| emoji | text | Visual representation of item |
+| name | text | Display name for the item |
+| stackable | boolean | Whether items can stack (default: true) |
+| max_stack | integer | Maximum stack size (default: 64) |
+| created_at | timestamp | When the item was added |
+
+### item_terrain_actions
+
+Defines how items interact with terrain
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| item_id | text | Foreign key to items.id |
+| terrain_type | text | Foreign key to terrain_types.id |
+| action_type | item_action_type | Either 'GATHER' or 'TRANSFORM' |
+| result_item_id | text | Foreign key to items.id for result |
+| min_quantity | integer | Minimum items received (default: 1) |
+| max_quantity | integer | Maximum items received (default: 1) |
+| success_rate | decimal | Chance of success (0.0-1.0) |
+| hits_to_transform | integer | Hits needed before transformation |
+| current_hits | jsonb | Tracks hits per location |
+| cooldown_seconds | integer | Time between actions (default: 0) |
+
+### crafting_recipes
+
+Defines recipes for creating items
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| result_item_id | text | Foreign key to items.id |
+| quantity_produced | integer | Amount crafted (default: 1) |
+| created_at | timestamp | When recipe was added |
+
+### crafting_ingredients
+
+Stores ingredients needed for recipes
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| recipe_id | uuid | Foreign key to crafting_recipes.id |
+| item_id | text | Foreign key to items.id |
+| quantity_required | integer | Amount needed (default: 1) |
+| created_at | timestamp | When ingredient was added |
 
 ## Row Level Security (RLS)
 
@@ -162,6 +207,21 @@ All tables have RLS enabled with appropriate policies:
 - Players can insert/update/delete only their own inventory items
 - No other players can view or modify another player's inventory
 
+### items
+
+- All authenticated users can view items
+- Only admins can modify items
+
+### item_terrain_actions
+
+- All authenticated users can view actions
+- Only admins can modify actions
+
+### crafting_recipes and crafting_ingredients
+
+- All authenticated users can view recipes and ingredients
+- Only admins can modify recipes
+
 ## Stored Procedures
 
 ### cleanup_player(player_id UUID, server_id UUID)
@@ -175,12 +235,31 @@ Removes a player's data from a server:
 
 API endpoint for cleanup_player that uses the authenticated user's ID
 
-### reset_server_map(server_id_param UUID)
+### reset_server_map(server_id UUID)
 
 Resets all tiles on a server back to their original terrain:
 
 - Updates terrain_type to match original_terrain_type for all tiles
 - Only accessible to authenticated users
+
+### handle_item_action(player_id UUID, item_slot INTEGER, x INTEGER, y INTEGER, server_id UUID)
+
+Handles item usage on terrain:
+
+- Checks if action is valid for item/terrain combination
+- Applies success rate and random quantities
+- Updates inventory with gathered resources
+- Tracks hits for transformation
+- Returns success/failure message
+
+### handle_crafting(player_id UUID, recipe_id UUID)
+
+Handles item crafting:
+
+- Verifies player has required ingredients
+- Removes ingredients from inventory
+- Adds crafted item to inventory
+- Returns success/failure message
 
 ## Indexes
 

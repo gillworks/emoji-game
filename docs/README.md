@@ -34,14 +34,43 @@ A real-time multiplayer browser game where players explore a procedurally genera
 ### Inventory System
 
 - 10-slot hotbar (keys 1-0)
-- Tool system:
-  - 🪓 Axe (Slot 1): Used to chop down trees
-- Resource stacking:
-  - 🪵 Wood: Obtained from chopping trees (stacks in inventory)
-- Slot selection via number keys or clicking
-- Visual selection feedback
-- Stack counter display
+- Tool system with multiple tools:
+  - 🪓 Axe: Used to chop trees for wood (3 hits to fell a tree)
+  - ⛏️ Pickaxe: Used to mine stone from mountains
+  - 🎣 Fishing Rod: Used to catch fish in oceans
+- Resources:
+  - 🪵 Wood: Obtained from chopping trees
+  - 🪨 Stone: Obtained from mining mountains
+  - 🐟 Fish: Caught in oceans
+- Stack system with configurable limits
 - Persistent inventory across sessions
+- Crafting system for creating tools and items
+- Visual feedback for gathering and crafting
+
+### Resource Gathering
+
+- Progressive resource gathering:
+  - Trees require multiple hits to fell
+  - Different success rates for different tools
+  - Random resource quantities
+- Terrain transformation:
+  - Trees transform to empty forest after being felled
+  - Resource nodes can regenerate when map resets
+- Tool-specific actions:
+  - Axes work on forests
+  - Pickaxes work on mountains
+  - Fishing rods work in oceans
+
+### Crafting System
+
+- Multiple ingredients per recipe
+- Quantity-based crafting
+- Example recipes:
+  - Axe: 2x Wood + 1x Stone
+  - Fishing Rod: 3x Wood
+- Clear feedback on missing materials
+- Automatic inventory management
+- Stack-aware crafting system
 
 ### Battle System
 
@@ -75,6 +104,10 @@ The game uses several interconnected tables:
 - servers: Game instance management
 - map_data: Terrain storage
 - server_players: Player-server relationships
+- items: Defines all available items and their properties
+- item_terrain_actions: Defines how items interact with terrain
+- crafting_recipes: Defines available crafting recipes
+- crafting_ingredients: Defines recipe requirements
 
 For detailed database information, see [Database Schema](database/schema.md)
 
