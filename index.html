@@ -4,7 +4,7 @@
     <title>Emoji Adventure</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
-    <link rel="stylesheet" href="styles.css?v=9" />
+    <link rel="stylesheet" href="styles.css?v=10" />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
@@ -294,8 +294,53 @@
           </div>
         </div>
 
-        <div id="game-map">
-          <canvas id="map-canvas"></canvas>
+        <div id="game-area">
+          <div id="game-map">
+            <canvas id="map-canvas"></canvas>
+          </div>
+          
+          <div id="inventory-hotbar">
+            <div class="hotbar-slot" data-slot="1" style="cursor: pointer">
+              <div class="hotkey">1</div>
+              <div class="slot-content"></div>
+            </div>
+            <div class="hotbar-slot" data-slot="2" style="cursor: pointer">
+              <div class="hotkey">2</div>
+              <div class="slot-content"></div>
+            </div>
+            <div class="hotbar-slot" data-slot="3" style="cursor: pointer">
+              <div class="hotkey">3</div>
+              <div class="slot-content"></div>
+            </div>
+            <div class="hotbar-slot" data-slot="4" style="cursor: pointer">
+              <div class="hotkey">4</div>
+              <div class="slot-content"></div>
+            </div>
+            <div class="hotbar-slot" data-slot="5" style="cursor: pointer">
+              <div class="hotkey">5</div>
+              <div class="slot-content"></div>
+            </div>
+            <div class="hotbar-slot" data-slot="6" style="cursor: pointer">
+              <div class="hotkey">6</div>
+              <div class="slot-content"></div>
+            </div>
+            <div class="hotbar-slot" data-slot="7" style="cursor: pointer">
+              <div class="hotkey">7</div>
+              <div class="slot-content"></div>
+            </div>
+            <div class="hotbar-slot" data-slot="8" style="cursor: pointer">
+              <div class="hotkey">8</div>
+              <div class="slot-content"></div>
+            </div>
+            <div class="hotbar-slot" data-slot="9" style="cursor: pointer">
+              <div class="hotkey">9</div>
+              <div class="slot-content"></div>
+            </div>
+            <div class="hotbar-slot" data-slot="10" style="cursor: pointer">
+              <div class="hotkey">0</div>
+              <div class="slot-content"></div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -337,1328 +382,1754 @@
         </div>
       </div>
 
-      <div id="inventory-hotbar">
-        <div class="hotbar-slot" data-slot="1" style="cursor: pointer">
-          <div class="hotkey">1</div>
-          <div class="slot-content"></div>
-        </div>
-        <div class="hotbar-slot" data-slot="2" style="cursor: pointer">
-          <div class="hotkey">2</div>
-          <div class="slot-content"></div>
-        </div>
-        <div class="hotbar-slot" data-slot="3" style="cursor: pointer">
-          <div class="hotkey">3</div>
-          <div class="slot-content"></div>
-        </div>
-        <div class="hotbar-slot" data-slot="4" style="cursor: pointer">
-          <div class="hotkey">4</div>
-          <div class="slot-content"></div>
-        </div>
-        <div class="hotbar-slot" data-slot="5" style="cursor: pointer">
-          <div class="hotkey">5</div>
-          <div class="slot-content"></div>
-        </div>
-        <div class="hotbar-slot" data-slot="6" style="cursor: pointer">
-          <div class="hotkey">6</div>
-          <div class="slot-content"></div>
-        </div>
-        <div class="hotbar-slot" data-slot="7" style="cursor: pointer">
-          <div class="hotkey">7</div>
-          <div class="slot-content"></div>
-        </div>
-        <div class="hotbar-slot" data-slot="8" style="cursor: pointer">
-          <div class="hotkey">8</div>
-          <div class="slot-content"></div>
-        </div>
-        <div class="hotbar-slot" data-slot="9" style="cursor: pointer">
-          <div class="hotkey">9</div>
-          <div class="slot-content"></div>
-        </div>
-        <div class="hotbar-slot" data-slot="10" style="cursor: pointer">
-          <div class="hotkey">0</div>
-          <div class="slot-content"></div>
+      <div id="game-over">
+        <h1>Game Over!</h1>
+        <p>Final Score: <span id="final-score">0</span></p>
+        <button id="restart-button" onclick="restartGame()">Play Again</button>
+      </div>
+
+      <!-- Add this before </body> -->
+      <div id="crafting-modal" class="modal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Crafting</h2>
+            <span class="close-button" onclick="closeCraftingMenu()"
+              >&times;</span
+            >
+          </div>
+          <div id="crafting-panel">
+            <div id="available-recipes"></div>
+            <div id="recipe-details"></div>
+            <button
+              id="craft-button"
+              onclick="craftSelectedRecipe()"
+              style="display: none"
+            >
+              Craft
+            </button>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div id="game-over">
-      <h1>Game Over!</h1>
-      <p>Final Score: <span id="final-score">0</span></p>
-      <button id="restart-button" onclick="restartGame()">Play Again</button>
-    </div>
+      <script>
+        let TERRAIN_TYPES = {};
 
-    <!-- Add this before </body> -->
-    <div id="crafting-modal" class="modal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2>Crafting</h2>
-          <span class="close-button" onclick="closeCraftingMenu()"
-            >&times;</span
-          >
-        </div>
-        <div id="crafting-panel">
-          <div id="available-recipes"></div>
-          <div id="recipe-details"></div>
-          <button
-            id="craft-button"
-            onclick="craftSelectedRecipe()"
-            style="display: none"
-          >
-            Craft
-          </button>
-        </div>
-      </div>
-    </div>
+        // Replace the loadTerrainTypes function with:
+        async function loadTerrainTypes() {
+          try {
+            const { data, error } = await supabaseClient
+              .from("terrain_types")
+              .select("*");
 
-    <script>
-      let TERRAIN_TYPES = {};
+            if (error) throw error;
+            if (!data || data.length === 0)
+              throw new Error("No terrain types found");
 
-      // Replace the loadTerrainTypes function with:
-      async function loadTerrainTypes() {
-        try {
-          const { data, error } = await supabaseClient
-            .from("terrain_types")
-            .select("*");
+            // Convert array to object format
+            TERRAIN_TYPES = data.reduce((acc, terrain) => {
+              acc[terrain.id] = {
+                emoji: terrain.emoji,
+                encounter: terrain.encounter,
+                color: terrain.color,
+              };
+              return acc;
+            }, {});
 
-          if (error) throw error;
-          if (!data || data.length === 0)
-            throw new Error("No terrain types found");
-
-          // Convert array to object format
-          TERRAIN_TYPES = data.reduce((acc, terrain) => {
-            acc[terrain.id] = {
-              emoji: terrain.emoji,
-              encounter: terrain.encounter,
-              color: terrain.color,
-            };
-            return acc;
-          }, {});
-
-          console.log("Terrain types loaded:", TERRAIN_TYPES);
-        } catch (error) {
-          console.error("Error loading terrain types:", error);
-          throw error; // Re-throw to be handled by initGame
-        }
-      }
-
-      let gameState = {
-        map: [],
-        playerPos: null,
-        health: 100,
-        score: 0,
-        inBattle: false,
-        currentEnemy: null,
-        playerHits: 0,
-        enemyHits: 0,
-        viewport: {
-          x: 0,
-          y: 0,
-          scale: 1,
-          isDragging: false,
-          lastX: 0,
-          lastY: 0,
-          cellSizeMultiplier: isDemoMode ? 0.085 : 0.04,
-        },
-        playerId: null,
-        otherPlayers: new Map(),
-        configs: null,
-        serverId: null,
-        mapWidth: 20,
-        mapHeight: 20,
-        playerAnimation: {
-          bounceOffset: 0,
-        },
-        inventory: {
-          items: {},
-          stacks: {},
-        },
-        crafting: {
-          isOpen: false,
-          selectedRecipeIndex: -1,
-          recipes: [],
-        },
-      };
-
-      let lastActiveInterval;
-
-      function startLastActiveUpdates() {
-        if (lastActiveInterval) {
-          clearInterval(lastActiveInterval);
-        }
-
-        lastActiveInterval = setInterval(async () => {
-          if (gameState.serverId) {
-            try {
-              await supabaseClient.rpc("increment_server_players", {
-                server_id: gameState.serverId,
-              });
-            } catch (error) {
-              console.error("Error updating last_active:", error);
-            }
+            console.log("Terrain types loaded:", TERRAIN_TYPES);
+          } catch (error) {
+            console.error("Error loading terrain types:", error);
+            throw error; // Re-throw to be handled by initGame
           }
-        }, 30000);
-      }
-
-      async function fetchGameConfigs() {
-        try {
-          const { data, error } = await supabaseClient
-            .from("game_configs")
-            .select("*");
-
-          if (error) throw error;
-
-          // Convert array of configs to object
-          const configs = {};
-          data.forEach((config) => {
-            configs[config.key] = config.value;
-          });
-
-          gameState.configs = configs;
-          console.log("Game configs loaded:", configs);
-        } catch (error) {
-          console.error("Error fetching game configs:", error);
-          // Use default values if configs can't be loaded
-          gameState.configs = {
-            encounter_rates: {
-              FOREST: 0.3,
-              MOUNTAIN: 0.4,
-              PLAIN: 0.2,
-              OCEAN: 0.3,
-            },
-          };
         }
-      }
 
-      async function findOrCreateServer() {
-        try {
-          // First check if player is already in a server using two separate queries
-          const { data: playerServers, error: playerError } =
-            await supabaseClient
-              .from("server_players")
-              .select("server_id")
-              .eq("player_id", gameState.playerId);
+        let gameState = {
+          map: [],
+          playerPos: null,
+          health: 100,
+          score: 0,
+          inBattle: false,
+          currentEnemy: null,
+          playerHits: 0,
+          enemyHits: 0,
+          viewport: {
+            x: 0,
+            y: 0,
+            scale: 1,
+            isDragging: false,
+            lastX: 0,
+            lastY: 0,
+            cellSizeMultiplier: isDemoMode ? 0.085 : 0.04,
+          },
+          playerId: null,
+          otherPlayers: new Map(),
+          configs: null,
+          serverId: null,
+          mapWidth: 20,
+          mapHeight: 20,
+          playerAnimation: {
+            bounceOffset: 0,
+          },
+          inventory: {
+            items: {},
+            stacks: {},
+          },
+          crafting: {
+            isOpen: false,
+            selectedRecipeIndex: -1,
+            recipes: [],
+          },
+        };
 
-          if (!playerError && playerServers && playerServers.length > 0) {
-            const playerServer = playerServers[0];
-            // Get server details
-            const { data: serverDetails, error: serverError } =
+        let lastActiveInterval;
+
+        function startLastActiveUpdates() {
+          if (lastActiveInterval) {
+            clearInterval(lastActiveInterval);
+          }
+
+          lastActiveInterval = setInterval(async () => {
+            if (gameState.serverId) {
+              try {
+                await supabaseClient.rpc("increment_server_players", {
+                  server_id: gameState.serverId,
+                });
+              } catch (error) {
+                console.error("Error updating last_active:", error);
+              }
+            }
+          }, 30000);
+        }
+
+        async function fetchGameConfigs() {
+          try {
+            const { data, error } = await supabaseClient
+              .from("game_configs")
+              .select("*");
+
+            if (error) throw error;
+
+            // Convert array of configs to object
+            const configs = {};
+            data.forEach((config) => {
+              configs[config.key] = config.value;
+            });
+
+            gameState.configs = configs;
+            console.log("Game configs loaded:", configs);
+          } catch (error) {
+            console.error("Error fetching game configs:", error);
+            // Use default values if configs can't be loaded
+            gameState.configs = {
+              encounter_rates: {
+                FOREST: 0.3,
+                MOUNTAIN: 0.4,
+                PLAIN: 0.2,
+                OCEAN: 0.3,
+              },
+            };
+          }
+        }
+
+        async function findOrCreateServer() {
+          try {
+            // First check if player is already in a server using two separate queries
+            const { data: playerServers, error: playerError } =
               await supabaseClient
+                .from("server_players")
+                .select("server_id")
+                .eq("player_id", gameState.playerId);
+
+            if (!playerError && playerServers && playerServers.length > 0) {
+              const playerServer = playerServers[0];
+              // Get server details
+              const { data: serverDetails, error: serverError } =
+                await supabaseClient
+                  .from("servers")
+                  .select("*")
+                  .eq("id", playerServer.server_id)
+                  .single();
+
+              if (
+                !serverError &&
+                serverDetails &&
+                serverDetails.status === "active"
+              ) {
+                console.log("Rejoining existing server:", playerServer.server_id);
+
+                // Call increment_server_players to ensure count is correct
+                await supabaseClient.rpc("increment_server_players", {
+                  server_id: playerServer.server_id,
+                });
+
+                gameState.serverId = playerServer.server_id;
+                return playerServer.server_id;
+              } else {
+                // Server is inactive or doesn't exist, remove player from it
+                await supabaseClient.from("server_players").delete().match({
+                  server_id: playerServer.server_id,
+                  player_id: gameState.playerId,
+                });
+              }
+            }
+
+            // Rest of the function remains the same
+            const { data: servers, error: serverError } = await supabaseClient
+              .from("servers")
+              .select(
+                `
+                *,
+                player_count:server_players(count)
+              `
+              )
+              .eq("status", "active")
+              .limit(1);
+
+            if (serverError) throw serverError;
+
+            let serverId;
+
+            if (servers && servers.length > 0) {
+              const server = servers[0];
+              const playerCount = server.player_count[0].count;
+
+              if (playerCount < server.max_players) {
+                // Join existing server
+                serverId = server.id;
+                console.log("Joining existing server:", serverId);
+              }
+            } else {
+              // Create new server
+              const { data: newServer, error: createError } = await supabaseClient
                 .from("servers")
-                .select("*")
-                .eq("id", playerServer.server_id)
+                .insert([
+                  {
+                    name: `Server ${Math.floor(Math.random() * 1000)}`,
+                    status: "active",
+                    max_players: 100,
+                  },
+                ])
+                .select()
                 .single();
 
-            if (
-              !serverError &&
-              serverDetails &&
-              serverDetails.status === "active"
-            ) {
-              console.log("Rejoining existing server:", playerServer.server_id);
+              if (createError) throw createError;
+              serverId = newServer.id;
 
-              // Call increment_server_players to ensure count is correct
-              await supabaseClient.rpc("increment_server_players", {
-                server_id: playerServer.server_id,
-              });
-
-              gameState.serverId = playerServer.server_id;
-              return playerServer.server_id;
-            } else {
-              // Server is inactive or doesn't exist, remove player from it
-              await supabaseClient.from("server_players").delete().match({
-                server_id: playerServer.server_id,
-                player_id: gameState.playerId,
-              });
+              // Generate and store map for new server
+              await generateAndStoreMap(serverId);
+              console.log("Created new server:", serverId);
             }
-          }
 
-          // Rest of the function remains the same
-          const { data: servers, error: serverError } = await supabaseClient
-            .from("servers")
-            .select(
-              `
-              *,
-              player_count:server_players(count)
-            `
-            )
-            .eq("status", "active")
-            .limit(1);
-
-          if (serverError) throw serverError;
-
-          let serverId;
-
-          if (servers && servers.length > 0) {
-            const server = servers[0];
-            const playerCount = server.player_count[0].count;
-
-            if (playerCount < server.max_players) {
-              // Join existing server
-              serverId = server.id;
-              console.log("Joining existing server:", serverId);
-            }
-          } else {
-            // Create new server
-            const { data: newServer, error: createError } = await supabaseClient
-              .from("servers")
-              .insert([
+            // Join server
+            const { error: joinError } = await supabaseClient
+              .from("server_players")
+              .upsert([
                 {
-                  name: `Server ${Math.floor(Math.random() * 1000)}`,
-                  status: "active",
-                  max_players: 100,
+                  server_id: serverId,
+                  player_id: gameState.playerId,
                 },
-              ])
-              .select()
+              ]);
+
+            if (joinError) throw joinError;
+
+            // Always call increment_server_players after joining
+            await supabaseClient.rpc("increment_server_players", {
+              server_id: serverId,
+            });
+
+            gameState.serverId = serverId;
+            return serverId;
+          } catch (error) {
+            console.error("Error finding/creating server:", error);
+            throw error;
+          }
+        }
+
+        async function loadMap(serverId) {
+          try {
+            // Get the server's map dimensions
+            const { data: serverData, error: serverError } = await supabaseClient
+              .from("servers")
+              .select("map_width, map_height")
+              .eq("id", serverId)
               .single();
 
-            if (createError) throw createError;
-            serverId = newServer.id;
+            if (serverError) throw serverError;
 
-            // Generate and store map for new server
-            await generateAndStoreMap(serverId);
-            console.log("Created new server:", serverId);
-          }
+            // Update gameState with the server's map dimensions
+            gameState.mapWidth = serverData.map_width || 20;
+            gameState.mapHeight = serverData.map_height || 20;
 
-          // Join server
-          const { error: joinError } = await supabaseClient
-            .from("server_players")
-            .upsert([
-              {
-                server_id: serverId,
-                player_id: gameState.playerId,
-              },
-            ]);
+            // Initialize empty map with correct dimensions
+            gameState.map = Array(gameState.mapHeight)
+              .fill()
+              .map(() => Array(gameState.mapWidth).fill(TERRAIN_TYPES.PLAIN));
 
-          if (joinError) throw joinError;
+            // Calculate total tiles needed
+            const totalTiles = gameState.mapWidth * gameState.mapHeight;
+            const pageSize = 1000;
+            const totalPages = Math.ceil(totalTiles / pageSize);
 
-          // Always call increment_server_players after joining
-          await supabaseClient.rpc("increment_server_players", {
-            server_id: serverId,
-          });
+            // Load map data in pages
+            for (let page = 0; page < totalPages; page++) {
+              const { data: mapData, error } = await supabaseClient
+                .from("map_data")
+                .select("x, y, terrain_type")
+                .eq("server_id", serverId)
+                .range(page * pageSize, (page + 1) * pageSize - 1);
 
-          gameState.serverId = serverId;
-          return serverId;
-        } catch (error) {
-          console.error("Error finding/creating server:", error);
-          throw error;
-        }
-      }
-
-      async function loadMap(serverId) {
-        try {
-          // Get the server's map dimensions
-          const { data: serverData, error: serverError } = await supabaseClient
-            .from("servers")
-            .select("map_width, map_height")
-            .eq("id", serverId)
-            .single();
-
-          if (serverError) throw serverError;
-
-          // Update gameState with the server's map dimensions
-          gameState.mapWidth = serverData.map_width || 20;
-          gameState.mapHeight = serverData.map_height || 20;
-
-          // Initialize empty map with correct dimensions
-          gameState.map = Array(gameState.mapHeight)
-            .fill()
-            .map(() => Array(gameState.mapWidth).fill(TERRAIN_TYPES.PLAIN));
-
-          // Calculate total tiles needed
-          const totalTiles = gameState.mapWidth * gameState.mapHeight;
-          const pageSize = 1000;
-          const totalPages = Math.ceil(totalTiles / pageSize);
-
-          // Load map data in pages
-          for (let page = 0; page < totalPages; page++) {
-            const { data: mapData, error } = await supabaseClient
-              .from("map_data")
-              .select("x, y, terrain_type")
-              .eq("server_id", serverId)
-              .range(page * pageSize, (page + 1) * pageSize - 1);
-
-            if (error) {
-              console.error(`Error loading page ${page}:`, error);
-              throw error;
-            }
-
-            // Populate map from database
-            mapData.forEach((tile) => {
-              if (
-                tile.x >= 0 &&
-                tile.x < gameState.mapWidth &&
-                tile.y >= 0 &&
-                tile.y < gameState.mapHeight &&
-                TERRAIN_TYPES[tile.terrain_type]
-              ) {
-                gameState.map[tile.y][tile.x] =
-                  TERRAIN_TYPES[tile.terrain_type];
-              }
-            });
-          }
-
-          // After map is fully loaded
-          renderMap();
-          updateTileInfo();
-        } catch (error) {
-          console.error("Error loading map:", error);
-          throw error;
-        }
-      }
-
-      async function generateAndStoreMap(serverId) {
-        try {
-          // Get the server's map dimensions
-          const { data: serverData, error: serverError } = await supabaseClient
-            .from("servers")
-            .select("map_width, map_height")
-            .eq("id", serverId)
-            .single();
-
-          if (serverError) throw serverError;
-
-          const mapWidth = serverData.map_width || 20;
-          const mapHeight = serverData.map_height || 20;
-
-          const mapData = [];
-          let debug_counts = {
-            FOREST: 0,
-            MOUNTAIN: 0,
-            PLAIN: 0,
-            OCEAN: 0,
-          };
-
-          for (let y = 0; y < mapHeight; y++) {
-            for (let x = 0; x < mapWidth; x++) {
-              const rand = Math.random();
-              let terrainType;
-
-              if (rand < 0.25) {
-                terrainType = "FOREST";
-                debug_counts.FOREST++;
-              } else if (rand < 0.5) {
-                terrainType = "MOUNTAIN";
-                debug_counts.MOUNTAIN++;
-              } else if (rand < 0.75) {
-                terrainType = "PLAIN";
-                debug_counts.PLAIN++;
-              } else {
-                terrainType = "OCEAN";
-                debug_counts.OCEAN++;
+              if (error) {
+                console.error(`Error loading page ${page}:`, error);
+                throw error;
               }
 
-              mapData.push({
-                server_id: serverId,
-                x: x,
-                y: y,
-                terrain_type: terrainType,
+              // Populate map from database
+              mapData.forEach((tile) => {
+                if (
+                  tile.x >= 0 &&
+                  tile.x < gameState.mapWidth &&
+                  tile.y >= 0 &&
+                  tile.y < gameState.mapHeight &&
+                  TERRAIN_TYPES[tile.terrain_type]
+                ) {
+                  gameState.map[tile.y][tile.x] =
+                    TERRAIN_TYPES[tile.terrain_type];
+                }
               });
             }
+
+            // After map is fully loaded
+            renderMap();
+            updateTileInfo();
+          } catch (error) {
+            console.error("Error loading map:", error);
+            throw error;
           }
-
-          console.log("Generated terrain distribution:", debug_counts);
-
-          // Insert in batches of 1000 to avoid payload size limits
-          for (let i = 0; i < mapData.length; i += 1000) {
-            const batch = mapData.slice(i, i + 1000);
-            const { error } = await supabaseClient
-              .from("map_data")
-              .insert(batch);
-
-            if (error) {
-              console.error("Error inserting batch:", error);
-              throw error;
-            }
-          }
-
-          // Verify the data was inserted correctly
-          const { data: verifyData, error: verifyError } = await supabaseClient
-            .from("map_data")
-            .select("terrain_type")
-            .eq("server_id", serverId)
-            .limit(5);
-
-          if (verifyError) {
-            console.error("Error verifying map data:", verifyError);
-          } else {
-            console.log("Sample of inserted map data:", verifyData);
-          }
-        } catch (error) {
-          console.error("Error storing map:", error);
-          throw error;
         }
-      }
 
-      let isRegistering = false;
+        async function generateAndStoreMap(serverId) {
+          try {
+            // Get the server's map dimensions
+            const { data: serverData, error: serverError } = await supabaseClient
+              .from("servers")
+              .select("map_width, map_height")
+              .eq("id", serverId)
+              .single();
 
-      async function initSupabase() {
-        try {
-          console.log("Initializing Supabase...");
+            if (serverError) throw serverError;
 
-          // Add retry mechanism for getting session
-          let session;
-          let retries = 3;
-          while (retries > 0) {
-            const { data: sessionData, error: sessionError } =
-              await supabaseClient.auth.getSession();
+            const mapWidth = serverData.map_width || 20;
+            const mapHeight = serverData.map_height || 20;
 
-            if (sessionError) {
-              console.error("Session error:", sessionError);
-              throw sessionError;
+            const mapData = [];
+            let debug_counts = {
+              FOREST: 0,
+              MOUNTAIN: 0,
+              PLAIN: 0,
+              OCEAN: 0,
+            };
+
+            for (let y = 0; y < mapHeight; y++) {
+              for (let x = 0; x < mapWidth; x++) {
+                const rand = Math.random();
+                let terrainType;
+
+                if (rand < 0.25) {
+                  terrainType = "FOREST";
+                  debug_counts.FOREST++;
+                } else if (rand < 0.5) {
+                  terrainType = "MOUNTAIN";
+                  debug_counts.MOUNTAIN++;
+                } else if (rand < 0.75) {
+                  terrainType = "PLAIN";
+                  debug_counts.PLAIN++;
+                } else {
+                  terrainType = "OCEAN";
+                  debug_counts.OCEAN++;
+                }
+
+                mapData.push({
+                  server_id: serverId,
+                  x: x,
+                  y: y,
+                  terrain_type: terrainType,
+                });
+              }
             }
 
-            if (sessionData?.session?.access_token) {
-              session = sessionData.session;
-              break;
+            console.log("Generated terrain distribution:", debug_counts);
+
+            // Insert in batches of 1000 to avoid payload size limits
+            for (let i = 0; i < mapData.length; i += 1000) {
+              const batch = mapData.slice(i, i + 1000);
+              const { error } = await supabaseClient
+                .from("map_data")
+                .insert(batch);
+
+              if (error) {
+                console.error("Error inserting batch:", error);
+                throw error;
+              }
             }
 
-            console.log(`Waiting for session... (${retries} retries left)`);
-            await new Promise((resolve) => setTimeout(resolve, 500));
-            retries--;
+            // Verify the data was inserted correctly
+            const { data: verifyData, error: verifyError } = await supabaseClient
+              .from("map_data")
+              .select("terrain_type")
+              .eq("server_id", serverId)
+              .limit(5);
+
+            if (verifyError) {
+              console.error("Error verifying map data:", verifyError);
+            } else {
+              console.log("Sample of inserted map data:", verifyData);
+            }
+          } catch (error) {
+            console.error("Error storing map:", error);
+            throw error;
           }
+        }
 
-          if (!session) {
-            console.log("No session, showing login/signup form...");
+        let isRegistering = false;
+
+        async function initSupabase() {
+          try {
+            console.log("Initializing Supabase...");
+
+            // Add retry mechanism for getting session
+            let session;
+            let retries = 3;
+            while (retries > 0) {
+              const { data: sessionData, error: sessionError } =
+                await supabaseClient.auth.getSession();
+
+              if (sessionError) {
+                console.error("Session error:", sessionError);
+                throw sessionError;
+              }
+
+              if (sessionData?.session?.access_token) {
+                session = sessionData.session;
+                break;
+              }
+
+              console.log(`Waiting for session... (${retries} retries left)`);
+              await new Promise((resolve) => setTimeout(resolve, 500));
+              retries--;
+            }
+
+            if (!session) {
+              console.log("No session, showing login/signup form...");
+              showAuthScreen();
+              return false;
+            }
+
+            // Add small delay after getting session
+            await new Promise((resolve) => setTimeout(resolve, 500));
+
+            const {
+              data: { user },
+              error: userError,
+            } = await supabaseClient.auth.getUser();
+
+            if (userError) {
+              console.error("Get user error:", userError);
+              throw userError;
+            }
+
+            gameState.playerId = user.id;
+            console.log("Player ID set:", gameState.playerId);
+
+            // Create player record if it doesn't exist
+            console.log("Creating player record...");
+            const { error: playerError } = await supabaseClient
+              .from("players")
+              .upsert({
+                id: gameState.playerId,
+                username: user.email.split("@")[0],
+                created_at: new Date().toISOString(),
+              });
+
+            if (playerError) {
+              console.error("Player creation error:", playerError);
+              throw playerError;
+            }
+
+            // Find or create server BEFORE handling positions
+            const serverId = await findOrCreateServer();
+            gameState.serverId = serverId;
+            console.log("Server ID set:", gameState.serverId);
+
+            return true;
+          } catch (error) {
+            console.error("Error initializing Supabase:", error);
             showAuthScreen();
             return false;
           }
+        }
 
-          // Add small delay after getting session
-          await new Promise((resolve) => setTimeout(resolve, 500));
+        function showAuthScreen() {
+          document.getElementById("auth-screen").style.display = "flex";
+          document.getElementById("game-container").style.display = "none";
+        }
 
-          const {
-            data: { user },
-            error: userError,
-          } = await supabaseClient.auth.getUser();
+        function hideAuthScreen() {
+          document.getElementById("auth-screen").style.display = "none";
+          document.getElementById("game-container").style.display = "flex";
+        }
 
-          if (userError) {
-            console.error("Get user error:", userError);
-            throw userError;
+        function toggleAuthMode() {
+          isRegistering = !isRegistering;
+          const title = document.getElementById("auth-title");
+          const toggle = document.getElementById("auth-toggle");
+          const error = document.getElementById("auth-error");
+          const submitButton = document.querySelector(
+            '.auth-form button[type="submit"]'
+          );
+
+          title.textContent = isRegistering ? "Create Account" : "Login";
+          toggle.textContent = isRegistering
+            ? "Login instead"
+            : "Create an account instead";
+          error.style.display = "none";
+
+          // Reset button state
+          submitButton.disabled = false;
+          submitButton.textContent = "Submit";
+
+          // Clear the form
+          document.getElementById("auth-form").reset();
+        }
+
+        function validateCredentials(email, password) {
+          const errorDiv = document.getElementById("auth-error");
+
+          if (!email || !password) {
+            errorDiv.style.color = "#ff6b6b";
+            errorDiv.style.display = "block";
+            errorDiv.textContent = "Email and password are required";
+            return false;
           }
 
-          gameState.playerId = user.id;
-          console.log("Player ID set:", gameState.playerId);
-
-          // Create player record if it doesn't exist
-          console.log("Creating player record...");
-          const { error: playerError } = await supabaseClient
-            .from("players")
-            .upsert({
-              id: gameState.playerId,
-              username: user.email.split("@")[0],
-              created_at: new Date().toISOString(),
-            });
-
-          if (playerError) {
-            console.error("Player creation error:", playerError);
-            throw playerError;
+          if (password.length < 6) {
+            errorDiv.style.color = "#ff6b6b";
+            errorDiv.style.display = "block";
+            errorDiv.textContent = "Password must be at least 6 characters long";
+            return false;
           }
 
-          // Find or create server BEFORE handling positions
-          const serverId = await findOrCreateServer();
-          gameState.serverId = serverId;
-          console.log("Server ID set:", gameState.serverId);
+          if (!email.includes("@")) {
+            errorDiv.style.color = "#ff6b6b";
+            errorDiv.style.display = "block";
+            errorDiv.textContent = "Please enter a valid email address";
+            return false;
+          }
 
           return true;
-        } catch (error) {
-          console.error("Error initializing Supabase:", error);
-          showAuthScreen();
-          return false;
-        }
-      }
-
-      function showAuthScreen() {
-        document.getElementById("auth-screen").style.display = "flex";
-        document.getElementById("game-container").style.display = "none";
-      }
-
-      function hideAuthScreen() {
-        document.getElementById("auth-screen").style.display = "none";
-        document.getElementById("game-container").style.display = "flex";
-      }
-
-      function toggleAuthMode() {
-        isRegistering = !isRegistering;
-        const title = document.getElementById("auth-title");
-        const toggle = document.getElementById("auth-toggle");
-        const error = document.getElementById("auth-error");
-        const submitButton = document.querySelector(
-          '.auth-form button[type="submit"]'
-        );
-
-        title.textContent = isRegistering ? "Create Account" : "Login";
-        toggle.textContent = isRegistering
-          ? "Login instead"
-          : "Create an account instead";
-        error.style.display = "none";
-
-        // Reset button state
-        submitButton.disabled = false;
-        submitButton.textContent = "Submit";
-
-        // Clear the form
-        document.getElementById("auth-form").reset();
-      }
-
-      function validateCredentials(email, password) {
-        const errorDiv = document.getElementById("auth-error");
-
-        if (!email || !password) {
-          errorDiv.style.color = "#ff6b6b";
-          errorDiv.style.display = "block";
-          errorDiv.textContent = "Email and password are required";
-          return false;
         }
 
-        if (password.length < 6) {
-          errorDiv.style.color = "#ff6b6b";
-          errorDiv.style.display = "block";
-          errorDiv.textContent = "Password must be at least 6 characters long";
-          return false;
-        }
+        async function handleAuth(event) {
+          event.preventDefault();
 
-        if (!email.includes("@")) {
-          errorDiv.style.color = "#ff6b6b";
-          errorDiv.style.display = "block";
-          errorDiv.textContent = "Please enter a valid email address";
-          return false;
-        }
+          const email = document.getElementById("auth-email").value;
+          const password = document.getElementById("auth-password").value;
 
-        return true;
-      }
-
-      async function handleAuth(event) {
-        event.preventDefault();
-
-        const email = document.getElementById("auth-email").value;
-        const password = document.getElementById("auth-password").value;
-
-        if (!validateCredentials(email, password)) {
-          return;
-        }
-
-        const errorDiv = document.getElementById("auth-error");
-        const submitButton = document.querySelector(
-          '.auth-form button[type="submit"]'
-        );
-        const authTitle = document.getElementById("auth-title");
-        const authToggle = document.getElementById("auth-toggle");
-        const authForm = document.getElementById("auth-form");
-
-        // Disable the submit button and show loading state
-        submitButton.disabled = true;
-        submitButton.textContent = "Loading...";
-        errorDiv.style.display = "none";
-
-        try {
-          if (isRegistering) {
-            console.log("Attempting registration...");
-            const { data, error } = await supabaseClient.auth.signUp({
-              email,
-              password,
-            });
-
-            console.log("Registration response:", { data, error });
-
-            if (error) throw error;
-            if (!data?.user)
-              throw new Error("Registration failed - no user data returned");
-
-            // Hide the entire form including input fields
-            authForm.style.display = "none";
-            authToggle.style.display = "none";
-
-            // Update title
-            authTitle.textContent = "Check Your Email";
-
-            // Show confirmation message
-            errorDiv.style.display = "block";
-            errorDiv.style.color = "#4caf50"; // Green color for success
-            errorDiv.innerHTML = `
-                ✉️ Registration successful!<br><br>
-                We've sent a confirmation link to:<br>
-                <strong>${email}</strong><br><br>
-                Please check your email and click the confirmation link to activate your account.<br><br>
-                <button onclick="switchToLogin()" class="auth-form-button">Return to Login</button>
-            `;
-
+          if (!validateCredentials(email, password)) {
             return;
-          } else {
-            console.log("Attempting login...");
-            const { data, error } =
-              await supabaseClient.auth.signInWithPassword({
+          }
+
+          const errorDiv = document.getElementById("auth-error");
+          const submitButton = document.querySelector(
+            '.auth-form button[type="submit"]'
+          );
+          const authTitle = document.getElementById("auth-title");
+          const authToggle = document.getElementById("auth-toggle");
+          const authForm = document.getElementById("auth-form");
+
+          // Disable the submit button and show loading state
+          submitButton.disabled = true;
+          submitButton.textContent = "Loading...";
+          errorDiv.style.display = "none";
+
+          try {
+            if (isRegistering) {
+              console.log("Attempting registration...");
+              const { data, error } = await supabaseClient.auth.signUp({
                 email,
                 password,
               });
 
-            console.log("Login response:", { data, error });
+              console.log("Registration response:", { data, error });
 
-            if (error) {
-              if (error.message === "Invalid login credentials") {
-                throw new Error("Invalid email or password. Please try again.");
+              if (error) throw error;
+              if (!data?.user)
+                throw new Error("Registration failed - no user data returned");
+
+              // Hide the entire form including input fields
+              authForm.style.display = "none";
+              authToggle.style.display = "none";
+
+              // Update title
+              authTitle.textContent = "Check Your Email";
+
+              // Show confirmation message
+              errorDiv.style.display = "block";
+              errorDiv.style.color = "#4caf50"; // Green color for success
+              errorDiv.innerHTML = `
+                  ✉️ Registration successful!<br><br>
+                  We've sent a confirmation link to:<br>
+                  <strong>${email}</strong><br><br>
+                  Please check your email and click the confirmation link to activate your account.<br><br>
+                  <button onclick="switchToLogin()" class="auth-form-button">Return to Login</button>
+              `;
+
+              return;
+            } else {
+              console.log("Attempting login...");
+              const { data, error } =
+                await supabaseClient.auth.signInWithPassword({
+                  email,
+                  password,
+                });
+
+              console.log("Login response:", { data, error });
+
+              if (error) {
+                if (error.message === "Invalid login credentials") {
+                  throw new Error("Invalid email or password. Please try again.");
+                }
+                throw error;
               }
-              throw error;
-            }
 
-            if (!data?.session) {
-              throw new Error("Login failed - no session created");
-            }
+              if (!data?.session) {
+                throw new Error("Login failed - no session created");
+              }
 
-            hideAuthScreen();
-            initGame();
-          }
-        } catch (error) {
-          console.error("Auth error:", error);
-          errorDiv.style.color = "#ff6b6b";
-          errorDiv.style.display = "block";
-          errorDiv.textContent =
-            error.message || "An error occurred during authentication";
-        } finally {
-          if (!isRegistering) {
-            // Only reset button if not in registration success state
-            submitButton.disabled = false;
-            submitButton.textContent = "Submit";
+              hideAuthScreen();
+              initGame();
+            }
+          } catch (error) {
+            console.error("Auth error:", error);
+            errorDiv.style.color = "#ff6b6b";
+            errorDiv.style.display = "block";
+            errorDiv.textContent =
+              error.message || "An error occurred during authentication";
+          } finally {
+            if (!isRegistering) {
+              // Only reset button if not in registration success state
+              submitButton.disabled = false;
+              submitButton.textContent = "Submit";
+            }
           }
         }
-      }
 
-      // Update the switchToLogin function to show the form again
-      function switchToLogin() {
-        isRegistering = false;
-        const authTitle = document.getElementById("auth-title");
-        const authToggle = document.getElementById("auth-toggle");
-        const submitButton = document.querySelector(
-          '.auth-form button[type="submit"]'
-        );
-        const errorDiv = document.getElementById("auth-error");
-        const authForm = document.getElementById("auth-form");
+        // Update the switchToLogin function to show the form again
+        function switchToLogin() {
+          isRegistering = false;
+          const authTitle = document.getElementById("auth-title");
+          const authToggle = document.getElementById("auth-toggle");
+          const submitButton = document.querySelector(
+            '.auth-form button[type="submit"]'
+          );
+          const errorDiv = document.getElementById("auth-error");
+          const authForm = document.getElementById("auth-form");
 
-        // Show the form again
-        authForm.style.display = "block";
+          // Show the form again
+          authForm.style.display = "block";
 
-        // Reset the form display
-        authTitle.textContent = "Login";
-        authToggle.style.display = "block";
-        authToggle.textContent = "Create an account instead";
-        submitButton.style.display = "block";
-        submitButton.disabled = false;
-        submitButton.textContent = "Submit";
-        errorDiv.style.display = "none";
+          // Reset the form display
+          authTitle.textContent = "Login";
+          authToggle.style.display = "block";
+          authToggle.textContent = "Create an account instead";
+          submitButton.style.display = "block";
+          submitButton.disabled = false;
+          submitButton.textContent = "Submit";
+          errorDiv.style.display = "none";
 
-        // Clear any input values
-        authForm.reset();
-      }
+          // Clear any input values
+          authForm.reset();
+        }
 
-      function renderMap() {
-        const canvas = document.getElementById("map-canvas");
-        const ctx = canvas.getContext("2d");
-        const cellSize =
-          Math.min(window.innerWidth, window.innerHeight) *
-          gameState.viewport.cellSizeMultiplier;
+        function renderMap() {
+          const canvas = document.getElementById("map-canvas");
+          const ctx = canvas.getContext("2d");
+          const cellSize =
+            Math.min(window.innerWidth, window.innerHeight) *
+            gameState.viewport.cellSizeMultiplier;
 
-        // Reset any transformations
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
+          // Reset any transformations
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-        // Set canvas size using width and height
-        canvas.width = gameState.mapWidth * cellSize;
-        canvas.height = gameState.mapHeight * cellSize;
+          // Set canvas size using width and height
+          canvas.width = gameState.mapWidth * cellSize;
+          canvas.height = gameState.mapHeight * cellSize;
 
-        // Clear canvas with a background color
-        ctx.fillStyle = "#2a2a2a";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+          // Clear canvas with a background color
+          ctx.fillStyle = "#2a2a2a";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Draw terrain backgrounds and emojis
-        for (let y = 0; y < gameState.mapHeight; y++) {
-          for (let x = 0; x < gameState.mapWidth; x++) {
-            const terrain = gameState.map[y][x];
-            if (!terrain || !terrain.emoji) continue;
+          // Draw terrain backgrounds and emojis
+          for (let y = 0; y < gameState.mapHeight; y++) {
+            for (let x = 0; x < gameState.mapWidth; x++) {
+              const terrain = gameState.map[y][x];
+              if (!terrain || !terrain.emoji) continue;
 
-            // Draw background color
-            ctx.fillStyle = terrain.color;
-            ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+              // Draw background color
+              ctx.fillStyle = terrain.color;
+              ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
 
-            // Draw terrain emoji with larger size
+              // Draw terrain emoji with larger size
+              ctx.font = `${cellSize * 0.9}px Arial`;
+              ctx.textAlign = "center";
+              ctx.textBaseline = "middle";
+              ctx.fillStyle = "white";
+              ctx.fillText(
+                terrain.emoji,
+                x * cellSize + cellSize / 2,
+                y * cellSize + cellSize / 2
+              );
+            }
+          }
+
+          // Draw other players with larger size
+          ctx.font = `${cellSize * 0.9}px Arial`;
+          gameState.otherPlayers.forEach((pos) => {
+            ctx.fillText(
+              pos.emoji || "🦊",
+              pos.x * cellSize + cellSize / 2,
+              pos.y * cellSize + cellSize / 2
+            );
+          });
+
+          // Draw main player with larger size
+          if (gameState.playerPos) {
             ctx.font = `${cellSize * 0.9}px Arial`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillStyle = "white";
             ctx.fillText(
-              terrain.emoji,
-              x * cellSize + cellSize / 2,
-              y * cellSize + cellSize / 2
+              gameState.playerEmoji || "🐻",
+              gameState.playerPos.x * cellSize + cellSize / 2,
+              gameState.playerPos.y * cellSize +
+                cellSize / 2 +
+                gameState.playerAnimation.bounceOffset
             );
           }
+
+          // Apply viewport transform
+          canvas.style.transform = `translate(${gameState.viewport.x}px, ${gameState.viewport.y}px) scale(${gameState.viewport.scale})`;
         }
 
-        // Draw other players with larger size
-        ctx.font = `${cellSize * 0.9}px Arial`;
-        gameState.otherPlayers.forEach((pos) => {
-          ctx.fillText(
-            pos.emoji || "🦊",
-            pos.x * cellSize + cellSize / 2,
-            pos.y * cellSize + cellSize / 2
+        // Also add this debug function
+        function debugMapSection(startX = 0, startY = 0, size = 5) {
+          console.log(
+            `Debugging map section from (${startX},${startY}) to (${
+              startX + size - 1
+            },${startY + size - 1}):`
           );
+          for (let y = startY; y < startY + size; y++) {
+            let row = "";
+            for (let x = startX; x < startX + size; x++) {
+              if (gameState.map[y] && gameState.map[y][x]) {
+                row += gameState.map[y][x].emoji + " ";
+              } else {
+                row += "❌ ";
+              }
+            }
+            console.log(row);
+          }
+        }
+
+        // Call this after loadMap completes
+        function verifyMapRendering() {
+          console.log("Verifying map rendering...");
+          debugMapSection(0, 0, 5); // Check top-left corner
+          debugMapSection(57, 57, 5); // Check middle section
+          debugMapSection(115, 115, 5); // Check bottom-right corner
+        }
+
+        function initCanvas() {
+          const canvas = document.getElementById("map-canvas");
+          const cellSize = Math.min(window.innerWidth, window.innerHeight) * 0.04;
+
+          canvas.width = gameState.mapWidth * cellSize;
+          canvas.height = gameState.mapHeight * cellSize;
+        }
+
+        function updateStatus() {
+          document.getElementById("health").textContent = gameState.health;
+          document.getElementById("score").textContent = gameState.score;
+          if (gameState.playerPos) {
+            document.getElementById("position-x").textContent =
+              gameState.playerPos.x;
+            document.getElementById("position-y").textContent =
+              gameState.playerPos.y;
+          }
+        }
+
+        function checkEncounter() {
+          const currentTerrain =
+            gameState.map[gameState.playerPos.y][gameState.playerPos.x];
+          const terrainType = Object.keys(TERRAIN_TYPES).find(
+            (type) => TERRAIN_TYPES[type].emoji === currentTerrain.emoji
+          );
+
+          const encounterRate =
+            gameState.configs?.encounter_rates?.[terrainType] ?? 0.3;
+
+          if (Math.random() < encounterRate) {
+            gameState.inBattle = true;
+            gameState.currentEnemy = currentTerrain.encounter;
+            showBattleScreen();
+          }
+        }
+
+        function showBattleScreen() {
+          document.getElementById("battle-screen").style.display = "block";
+          document.getElementById("enemy-emoji").textContent =
+            gameState.currentEnemy;
+          document.getElementById("battle-options").style.display = "block";
+          document.getElementById("attack-options").style.display = "none";
+          document.getElementById("battle-moves").innerHTML = "";
+
+          // Update the player's emoji in battle screen
+          document.querySelector(".battle-fighter .fighter-emoji").textContent =
+            gameState.playerEmoji || "🐻";
+
+          // Reset hearts
+          document.getElementById("player-hearts").innerHTML = "❤️❤️❤️";
+          document.getElementById("enemy-hearts").innerHTML = "❤️❤️❤️";
+        }
+
+        function chooseBattle(choice) {
+          if (choice === "fight") {
+            document.getElementById("battle-options").style.display = "none";
+            document.getElementById("attack-options").style.display = "block";
+            document.getElementById("battle-moves").innerHTML =
+              "Choose your attack!";
+          } else {
+            // Disable battle options immediately to prevent multiple runs
+            const battleOptions = document.querySelectorAll(".battle-option");
+            battleOptions.forEach((button) => (button.disabled = true));
+
+            if (Math.random() < 0.6) {
+              // Successful escape
+              gameState.inBattle = false; // Set this immediately to prevent further battle actions
+              const battleMoves = document.getElementById("battle-moves");
+              battleMoves.innerHTML = "🏃 Got away safely!";
+              setTimeout(endBattle, 1500);
+            } else {
+              // Failed escape
+              gameState.health -= 10;
+              updateStatus();
+              const battleMoves = document.getElementById("battle-moves");
+              battleMoves.innerHTML = "😰 Couldn't escape! -10 health!";
+
+              // Re-enable battle options only if escape failed
+              battleOptions.forEach((button) => (button.disabled = false));
+
+              if (gameState.health <= 0) {
+                gameOver();
+              }
+            }
+          }
+        }
+
+        function chooseAttack(playerChoice) {
+          // Prevent attacks if battle is ending
+          if (!gameState.inBattle) return;
+
+          const choices = ["quick", "heavy", "block"];
+          const enemyChoice = choices[Math.floor(Math.random() * choices.length)];
+
+          const attackEmojis = {
+            quick: "🌪️",
+            heavy: "🔨",
+            block: "🛡️",
+          };
+
+          // Show the moves
+          document.getElementById(
+            "battle-moves"
+          ).innerHTML = `${attackEmojis[playerChoice]} VS ${attackEmojis[enemyChoice]}`;
+
+          let result = "";
+          if (
+            (playerChoice === "quick" && enemyChoice === "heavy") ||
+            (playerChoice === "heavy" && enemyChoice === "block") ||
+            (playerChoice === "block" && enemyChoice === "quick")
+          ) {
+            gameState.playerHits++;
+            result = "✨";
+            // Update enemy hearts (ensure non-negative value)
+            const hearts = document.getElementById("enemy-hearts");
+            hearts.innerHTML = "❤️".repeat(Math.max(0, 3 - gameState.playerHits));
+          } else if (playerChoice === enemyChoice) {
+            result = "🤜🤛";
+          } else {
+            gameState.enemyHits++;
+            result = "💥";
+            // Update player hearts (ensure non-negative value)
+            const hearts = document.getElementById("player-hearts");
+            hearts.innerHTML = "❤️".repeat(Math.max(0, 3 - gameState.enemyHits));
+          }
+
+          // Show hit animation
+          const battleContainer = document.querySelector(".battle-container");
+          const resultElement = document.createElement("div");
+          resultElement.className = "attack-result";
+          resultElement.textContent = result;
+          resultElement.style.left = "50%";
+          resultElement.style.top = "50%";
+          battleContainer.appendChild(resultElement);
+
+          // Remove the animation element after it completes
+          setTimeout(() => {
+            resultElement.remove();
+          }, 1000);
+
+          if (gameState.playerHits >= 3) {
+            // Disable further attacks
+            gameState.inBattle = false;
+            // Disable attack buttons
+            const attackButtons = document.querySelectorAll(".battle-option");
+            attackButtons.forEach((button) => (button.disabled = true));
+
+            gameState.score += 100;
+            updateStatus();
+            setTimeout(() => {
+              showVictoryAnimation();
+              setTimeout(endBattle, 1500);
+            }, 1000);
+          } else if (gameState.enemyHits >= 3) {
+            // Disable further attacks
+            gameState.inBattle = false;
+            // Disable attack buttons
+            const attackButtons = document.querySelectorAll(".battle-option");
+            attackButtons.forEach((button) => (button.disabled = true));
+
+            gameState.health -= 30;
+            updateStatus();
+            setTimeout(() => {
+              showDefeatAnimation();
+              setTimeout(endBattle, 1500);
+            }, 1000);
+          }
+
+          if (gameState.health <= 0) {
+            gameOver();
+          }
+        }
+
+        function endBattle() {
+          gameState.inBattle = false;
+          gameState.currentEnemy = null;
+          gameState.playerHits = 0;
+          gameState.enemyHits = 0;
+
+          // Re-enable all battle buttons
+          const battleButtons = document.querySelectorAll(".battle-option");
+          battleButtons.forEach((button) => (button.disabled = false));
+
+          document.getElementById("battle-screen").style.display = "none";
+        }
+
+        function gameOver() {
+          document.getElementById("game-over").style.display = "flex";
+          document.getElementById("final-score").textContent = gameState.score;
+        }
+
+        function restartGame() {
+          window.location.reload();
+        }
+
+        // Pan handling
+        const gameMap = document.getElementById("game-map");
+
+        gameMap.addEventListener("mousedown", (e) => {
+          if (gameState.inBattle) return;
+          gameState.viewport.isDragging = true;
+          gameState.viewport.lastX = e.clientX;
+          gameState.viewport.lastY = e.clientY;
+          gameMap.style.cursor = "grabbing";
         });
 
-        // Draw main player with larger size
-        if (gameState.playerPos) {
-          ctx.font = `${cellSize * 0.9}px Arial`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillStyle = "white";
-          ctx.fillText(
-            gameState.playerEmoji || "🐻",
-            gameState.playerPos.x * cellSize + cellSize / 2,
-            gameState.playerPos.y * cellSize +
-              cellSize / 2 +
-              gameState.playerAnimation.bounceOffset
-          );
-        }
+        gameMap.addEventListener("mousemove", (e) => {
+          if (!gameState.viewport.isDragging) return;
 
-        // Apply viewport transform
-        canvas.style.transform = `translate(${gameState.viewport.x}px, ${gameState.viewport.y}px) scale(${gameState.viewport.scale})`;
-      }
+          const dx = e.clientX - gameState.viewport.lastX;
+          const dy = e.clientY - gameState.viewport.lastY;
 
-      // Also add this debug function
-      function debugMapSection(startX = 0, startY = 0, size = 5) {
-        console.log(
-          `Debugging map section from (${startX},${startY}) to (${
-            startX + size - 1
-          },${startY + size - 1}):`
-        );
-        for (let y = startY; y < startY + size; y++) {
-          let row = "";
-          for (let x = startX; x < startX + size; x++) {
-            if (gameState.map[y] && gameState.map[y][x]) {
-              row += gameState.map[y][x].emoji + " ";
-            } else {
-              row += "❌ ";
+          gameState.viewport.x += dx;
+          gameState.viewport.y += dy;
+
+          gameState.viewport.lastX = e.clientX;
+          gameState.viewport.lastY = e.clientY;
+
+          renderMap();
+        });
+
+        gameMap.addEventListener("mouseup", () => {
+          gameState.viewport.isDragging = false;
+          gameMap.style.cursor = "grab";
+        });
+
+        gameMap.addEventListener("mouseleave", () => {
+          gameState.viewport.isDragging = false;
+          gameMap.style.cursor = "grab";
+        });
+
+        document.addEventListener("keydown", async (e) => {
+          if (!e || !e.key) return;
+          const key = e.key.toLowerCase();
+
+          // Handle crafting menu controls first
+          if (gameState.crafting.isOpen) {
+            switch (key) {
+              case "c":
+                if (gameState.crafting.selectedRecipeIndex !== -1) {
+                  craftSelectedRecipe();
+                }
+                e.preventDefault();
+                return;
+              case "escape":
+                closeCraftingMenu();
+                e.preventDefault();
+                return;
+              case "arrowup":
+                e.preventDefault();
+                navigateRecipes(-1);
+                return;
+              case "arrowdown":
+                e.preventDefault();
+                navigateRecipes(1);
+                return;
             }
+            // Prevent any other keys while crafting is open
+            e.preventDefault();
+            return;
           }
-          console.log(row);
-        }
-      }
 
-      // Call this after loadMap completes
-      function verifyMapRendering() {
-        console.log("Verifying map rendering...");
-        debugMapSection(0, 0, 5); // Check top-left corner
-        debugMapSection(57, 57, 5); // Check middle section
-        debugMapSection(115, 115, 5); // Check bottom-right corner
-      }
-
-      function initCanvas() {
-        const canvas = document.getElementById("map-canvas");
-        const cellSize = Math.min(window.innerWidth, window.innerHeight) * 0.04;
-
-        canvas.width = gameState.mapWidth * cellSize;
-        canvas.height = gameState.mapHeight * cellSize;
-      }
-
-      function updateStatus() {
-        document.getElementById("health").textContent = gameState.health;
-        document.getElementById("score").textContent = gameState.score;
-        if (gameState.playerPos) {
-          document.getElementById("position-x").textContent =
-            gameState.playerPos.x;
-          document.getElementById("position-y").textContent =
-            gameState.playerPos.y;
-        }
-      }
-
-      function checkEncounter() {
-        const currentTerrain =
-          gameState.map[gameState.playerPos.y][gameState.playerPos.x];
-        const terrainType = Object.keys(TERRAIN_TYPES).find(
-          (type) => TERRAIN_TYPES[type].emoji === currentTerrain.emoji
-        );
-
-        const encounterRate =
-          gameState.configs?.encounter_rates?.[terrainType] ?? 0.3;
-
-        if (Math.random() < encounterRate) {
-          gameState.inBattle = true;
-          gameState.currentEnemy = currentTerrain.encounter;
-          showBattleScreen();
-        }
-      }
-
-      function showBattleScreen() {
-        document.getElementById("battle-screen").style.display = "block";
-        document.getElementById("enemy-emoji").textContent =
-          gameState.currentEnemy;
-        document.getElementById("battle-options").style.display = "block";
-        document.getElementById("attack-options").style.display = "none";
-        document.getElementById("battle-moves").innerHTML = "";
-
-        // Update the player's emoji in battle screen
-        document.querySelector(".battle-fighter .fighter-emoji").textContent =
-          gameState.playerEmoji || "🐻";
-
-        // Reset hearts
-        document.getElementById("player-hearts").innerHTML = "❤️❤️❤️";
-        document.getElementById("enemy-hearts").innerHTML = "❤️❤️❤️";
-      }
-
-      function chooseBattle(choice) {
-        if (choice === "fight") {
-          document.getElementById("battle-options").style.display = "none";
-          document.getElementById("attack-options").style.display = "block";
-          document.getElementById("battle-moves").innerHTML =
-            "Choose your attack!";
-        } else {
-          // Disable battle options immediately to prevent multiple runs
-          const battleOptions = document.querySelectorAll(".battle-option");
-          battleOptions.forEach((button) => (button.disabled = true));
-
-          if (Math.random() < 0.6) {
-            // Successful escape
-            gameState.inBattle = false; // Set this immediately to prevent further battle actions
-            const battleMoves = document.getElementById("battle-moves");
-            battleMoves.innerHTML = "🏃 Got away safely!";
-            setTimeout(endBattle, 1500);
-          } else {
-            // Failed escape
-            gameState.health -= 10;
-            updateStatus();
-            const battleMoves = document.getElementById("battle-moves");
-            battleMoves.innerHTML = "😰 Couldn't escape! -10 health!";
-
-            // Re-enable battle options only if escape failed
-            battleOptions.forEach((button) => (button.disabled = false));
-
-            if (gameState.health <= 0) {
-              gameOver();
-            }
+          // Handle battle controls
+          if (gameState.inBattle) {
+            // ... existing battle controls ...
+            return;
           }
-        }
-      }
 
-      function chooseAttack(playerChoice) {
-        // Prevent attacks if battle is ending
-        if (!gameState.inBattle) return;
+          // Handle hotbar selection
+          if (key >= "0" && key <= "9") {
+            // ... existing hotbar selection code ...
+            return;
+          }
 
-        const choices = ["quick", "heavy", "block"];
-        const enemyChoice = choices[Math.floor(Math.random() * choices.length)];
+          // Handle crafting menu toggle
+          if (key === "c" && !gameState.inBattle) {
+            openCraftingMenu();
+            e.preventDefault();
+            return;
+          }
 
-        const attackEmojis = {
-          quick: "🌪️",
-          heavy: "🔨",
-          block: "🛡️",
-        };
+          // Only process movement if player position exists and no modal is open
+          if (!gameState.playerPos) return;
 
-        // Show the moves
-        document.getElementById(
-          "battle-moves"
-        ).innerHTML = `${attackEmojis[playerChoice]} VS ${attackEmojis[enemyChoice]}`;
+          // Movement controls
+          const newPos = { ...gameState.playerPos };
 
-        let result = "";
-        if (
-          (playerChoice === "quick" && enemyChoice === "heavy") ||
-          (playerChoice === "heavy" && enemyChoice === "block") ||
-          (playerChoice === "block" && enemyChoice === "quick")
-        ) {
-          gameState.playerHits++;
-          result = "✨";
-          // Update enemy hearts (ensure non-negative value)
-          const hearts = document.getElementById("enemy-hearts");
-          hearts.innerHTML = "❤️".repeat(Math.max(0, 3 - gameState.playerHits));
-        } else if (playerChoice === enemyChoice) {
-          result = "🤜🤛";
-        } else {
-          gameState.enemyHits++;
-          result = "💥";
-          // Update player hearts (ensure non-negative value)
-          const hearts = document.getElementById("player-hearts");
-          hearts.innerHTML = "❤️".repeat(Math.max(0, 3 - gameState.enemyHits));
-        }
-
-        // Show hit animation
-        const battleContainer = document.querySelector(".battle-container");
-        const resultElement = document.createElement("div");
-        resultElement.className = "attack-result";
-        resultElement.textContent = result;
-        resultElement.style.left = "50%";
-        resultElement.style.top = "50%";
-        battleContainer.appendChild(resultElement);
-
-        // Remove the animation element after it completes
-        setTimeout(() => {
-          resultElement.remove();
-        }, 1000);
-
-        if (gameState.playerHits >= 3) {
-          // Disable further attacks
-          gameState.inBattle = false;
-          // Disable attack buttons
-          const attackButtons = document.querySelectorAll(".battle-option");
-          attackButtons.forEach((button) => (button.disabled = true));
-
-          gameState.score += 100;
-          updateStatus();
-          setTimeout(() => {
-            showVictoryAnimation();
-            setTimeout(endBattle, 1500);
-          }, 1000);
-        } else if (gameState.enemyHits >= 3) {
-          // Disable further attacks
-          gameState.inBattle = false;
-          // Disable attack buttons
-          const attackButtons = document.querySelectorAll(".battle-option");
-          attackButtons.forEach((button) => (button.disabled = true));
-
-          gameState.health -= 30;
-          updateStatus();
-          setTimeout(() => {
-            showDefeatAnimation();
-            setTimeout(endBattle, 1500);
-          }, 1000);
-        }
-
-        if (gameState.health <= 0) {
-          gameOver();
-        }
-      }
-
-      function endBattle() {
-        gameState.inBattle = false;
-        gameState.currentEnemy = null;
-        gameState.playerHits = 0;
-        gameState.enemyHits = 0;
-
-        // Re-enable all battle buttons
-        const battleButtons = document.querySelectorAll(".battle-option");
-        battleButtons.forEach((button) => (button.disabled = false));
-
-        document.getElementById("battle-screen").style.display = "none";
-      }
-
-      function gameOver() {
-        document.getElementById("game-over").style.display = "flex";
-        document.getElementById("final-score").textContent = gameState.score;
-      }
-
-      function restartGame() {
-        window.location.reload();
-      }
-
-      // Pan handling
-      const gameMap = document.getElementById("game-map");
-
-      gameMap.addEventListener("mousedown", (e) => {
-        if (gameState.inBattle) return;
-        gameState.viewport.isDragging = true;
-        gameState.viewport.lastX = e.clientX;
-        gameState.viewport.lastY = e.clientY;
-        gameMap.style.cursor = "grabbing";
-      });
-
-      gameMap.addEventListener("mousemove", (e) => {
-        if (!gameState.viewport.isDragging) return;
-
-        const dx = e.clientX - gameState.viewport.lastX;
-        const dy = e.clientY - gameState.viewport.lastY;
-
-        gameState.viewport.x += dx;
-        gameState.viewport.y += dy;
-
-        gameState.viewport.lastX = e.clientX;
-        gameState.viewport.lastY = e.clientY;
-
-        renderMap();
-      });
-
-      gameMap.addEventListener("mouseup", () => {
-        gameState.viewport.isDragging = false;
-        gameMap.style.cursor = "grab";
-      });
-
-      gameMap.addEventListener("mouseleave", () => {
-        gameState.viewport.isDragging = false;
-        gameMap.style.cursor = "grab";
-      });
-
-      document.addEventListener("keydown", async (e) => {
-        if (!e || !e.key) return;
-        const key = e.key.toLowerCase();
-
-        // Handle crafting menu controls first
-        if (gameState.crafting.isOpen) {
           switch (key) {
-            case "c":
-              if (gameState.crafting.selectedRecipeIndex !== -1) {
-                craftSelectedRecipe();
-              }
-              e.preventDefault();
-              return;
-            case "escape":
-              closeCraftingMenu();
-              e.preventDefault();
-              return;
+            case "w":
             case "arrowup":
-              e.preventDefault();
-              navigateRecipes(-1);
-              return;
+              if (newPos.y > 0) newPos.y--;
+              break;
+            case "s":
             case "arrowdown":
-              e.preventDefault();
-              navigateRecipes(1);
+              if (newPos.y < gameState.mapHeight - 1) newPos.y++;
+              break;
+            case "a":
+            case "arrowleft":
+              if (newPos.x > 0) newPos.x--;
+              break;
+            case "d":
+            case "arrowright":
+              if (newPos.x < gameState.mapWidth - 1) newPos.x++;
+              break;
+            default:
               return;
           }
-          // Prevent any other keys while crafting is open
-          e.preventDefault();
-          return;
-        }
 
-        // Handle battle controls
-        if (gameState.inBattle) {
-          // ... existing battle controls ...
-          return;
-        }
+          gameState.playerPos = newPos;
 
-        // Handle hotbar selection
-        if (key >= "0" && key <= "9") {
-          // ... existing hotbar selection code ...
-          return;
-        }
-
-        // Handle crafting menu toggle
-        if (key === "c" && !gameState.inBattle) {
-          openCraftingMenu();
-          e.preventDefault();
-          return;
-        }
-
-        // Only process movement if player position exists and no modal is open
-        if (!gameState.playerPos) return;
-
-        // Movement controls
-        const newPos = { ...gameState.playerPos };
-
-        switch (key) {
-          case "w":
-          case "arrowup":
-            if (newPos.y > 0) newPos.y--;
-            break;
-          case "s":
-          case "arrowdown":
-            if (newPos.y < gameState.mapHeight - 1) newPos.y++;
-            break;
-          case "a":
-          case "arrowleft":
-            if (newPos.x > 0) newPos.x--;
-            break;
-          case "d":
-          case "arrowright":
-            if (newPos.x < gameState.mapWidth - 1) newPos.x++;
-            break;
-          default:
-            return;
-        }
-
-        gameState.playerPos = newPos;
-
-        // Update position in Supabase
-        try {
-          const { error } = await supabaseClient
-            .from("player_positions")
-            .upsert({
-              player_id: gameState.playerId,
-              server_id: gameState.serverId,
-              x: newPos.x,
-              y: newPos.y,
-            });
-
-          if (error) {
-            console.error("Position update error:", error);
-            throw error;
-          }
-        } catch (error) {
-          console.error("Error updating position:", error);
-        }
-
-        renderMap();
-        updateStatus();
-        checkEncounter();
-        updateTileInfo();
-      });
-
-      // Modify initGame to wait for terrain types
-      async function initGame() {
-        try {
-          // Load terrain types first
-          await loadTerrainTypes();
-
-          showLoadingScreen();
-
-          const isAuthenticated = await initSupabase();
-          if (!isAuthenticated) {
-            hideLoadingScreen();
-            return;
-          }
-
-          // Add demo mode UI adjustments
-          if (isDemoMode) {
-            document.querySelector(
-              "#status-bar div:nth-child(4)"
-            ).style.display = "none";
-            document.querySelector(
-              "#status-bar div:nth-child(5)"
-            ).style.display = "none";
-          }
-
-          // Get player username and update display
-          const { data: playerData, error: playerError } = await supabaseClient
-            .from("players")
-            .select("username, emoji")
-            .eq("id", gameState.playerId)
-            .single();
-
-          if (playerError) {
-            console.error("Error fetching player data:", playerError);
-            throw playerError;
-          }
-
-          // Set the player's emoji (use bear as default if none set)
-          gameState.playerEmoji = playerData.emoji || "🐻";
-          document.getElementById("player-emoji").textContent =
-            gameState.playerEmoji;
-          document.querySelector(".fighter-emoji").textContent =
-            gameState.playerEmoji;
-
-          // Load emoji choices here, after player data is set
-          await loadEmojiChoices();
-
-          console.log(
-            "Player data:",
-            playerData,
-            "Player ID:",
-            gameState.playerId
-          );
-
-          if (!playerError && playerData) {
-            document.getElementById("player-username").textContent =
-              playerData.username;
-          }
-
-          await fetchGameConfigs();
-
-          // Find or create server should be called before checking positions
-          const serverId = await findOrCreateServer();
-          gameState.serverId = serverId;
-          console.log("Server ID set:", gameState.serverId);
-
-          await loadMap(gameState.serverId);
-          await setupPlayerSubscriptions();
-
-          console.log(
-            "Checking position for player:",
-            gameState.playerId,
-            "on server:",
-            gameState.serverId
-          );
-
-          console.log("About to check position with params:", {
-            playerId: gameState.playerId,
-            serverId: gameState.serverId,
-          });
-
-          // Create initial player position if none exists
-          const { data: existingPos, error: posQueryError } =
-            await supabaseClient
+          // Update position in Supabase
+          try {
+            const { error } = await supabaseClient
               .from("player_positions")
-              .select("x, y")
-              .match({
+              .upsert({
                 player_id: gameState.playerId,
                 server_id: gameState.serverId,
-              })
-              .maybeSingle();
+                x: newPos.x,
+                y: newPos.y,
+              });
 
-          // Add detailed error logging
-          if (posQueryError) {
-            console.error("Position query error details:", {
-              error: posQueryError,
-              query: {
-                playerId: gameState.playerId,
-                serverId: gameState.serverId,
-              },
-            });
+            if (error) {
+              console.error("Position update error:", error);
+              throw error;
+            }
+          } catch (error) {
+            console.error("Error updating position:", error);
           }
 
-          console.log("Position query complete:", {
-            data: existingPos,
-            error: posQueryError,
-          });
+          renderMap();
+          updateStatus();
+          checkEncounter();
+          updateTileInfo();
+        });
 
-          if (existingPos) {
-            console.log("Found existing position:", existingPos);
-            gameState.playerPos = existingPos;
-          } else {
-            console.log("No existing position found, creating new position");
-            // Set initial position to center of map
-            const newPosition = {
-              x: Math.floor(gameState.mapWidth / 2),
-              y: Math.floor(gameState.mapHeight / 2),
-            };
+        // Modify initGame to wait for terrain types
+        async function initGame() {
+          try {
+            // Load terrain types first
+            await loadTerrainTypes();
 
-            console.log("Attempting to create position:", {
-              player_id: gameState.playerId,
-              server_id: gameState.serverId,
-              ...newPosition,
+            showLoadingScreen();
+
+            const isAuthenticated = await initSupabase();
+            if (!isAuthenticated) {
+              hideLoadingScreen();
+              return;
+            }
+
+            // Add demo mode UI adjustments
+            if (isDemoMode) {
+              document.querySelector(
+                "#status-bar div:nth-child(4)"
+              ).style.display = "none";
+              document.querySelector(
+                "#status-bar div:nth-child(5)"
+              ).style.display = "none";
+            }
+
+            // Get player username and update display
+            const { data: playerData, error: playerError } = await supabaseClient
+              .from("players")
+              .select("username, emoji")
+              .eq("id", gameState.playerId)
+              .single();
+
+            if (playerError) {
+              console.error("Error fetching player data:", playerError);
+              throw playerError;
+            }
+
+            // Set the player's emoji (use bear as default if none set)
+            gameState.playerEmoji = playerData.emoji || "🐻";
+            document.getElementById("player-emoji").textContent =
+              gameState.playerEmoji;
+            document.querySelector(".fighter-emoji").textContent =
+              gameState.playerEmoji;
+
+            // Load emoji choices here, after player data is set
+            await loadEmojiChoices();
+
+            console.log(
+              "Player data:",
+              playerData,
+              "Player ID:",
+              gameState.playerId
+            );
+
+            if (!playerError && playerData) {
+              document.getElementById("player-username").textContent =
+                playerData.username;
+            }
+
+            await fetchGameConfigs();
+
+            // Find or create server should be called before checking positions
+            const serverId = await findOrCreateServer();
+            gameState.serverId = serverId;
+            console.log("Server ID set:", gameState.serverId);
+
+            await loadMap(gameState.serverId);
+            await setupPlayerSubscriptions();
+
+            console.log(
+              "Checking position for player:",
+              gameState.playerId,
+              "on server:",
+              gameState.serverId
+            );
+
+            console.log("About to check position with params:", {
+              playerId: gameState.playerId,
+              serverId: gameState.serverId,
             });
 
-            // Insert new position
-            const { data: newPos, error: posError } = await supabaseClient
-              .from("player_positions")
-              .insert([
-                {
+            // Create initial player position if none exists
+            const { data: existingPos, error: posQueryError } =
+              await supabaseClient
+                .from("player_positions")
+                .select("x, y")
+                .match({
+                  player_id: gameState.playerId,
+                  server_id: gameState.serverId,
+                })
+                .maybeSingle();
+
+            // Add detailed error logging
+            if (posQueryError) {
+              console.error("Position query error details:", {
+                error: posQueryError,
+                query: {
+                  playerId: gameState.playerId,
+                  serverId: gameState.serverId,
+                },
+              });
+            }
+
+            console.log("Position query complete:", {
+              data: existingPos,
+              error: posQueryError,
+            });
+
+            if (existingPos) {
+              console.log("Found existing position:", existingPos);
+              gameState.playerPos = existingPos;
+            } else {
+              console.log("No existing position found, creating new position");
+              // Set initial position to center of map
+              const newPosition = {
+                x: Math.floor(gameState.mapWidth / 2),
+                y: Math.floor(gameState.mapHeight / 2),
+              };
+
+              console.log("Attempting to create position:", {
+                player_id: gameState.playerId,
+                server_id: gameState.serverId,
+                ...newPosition,
+              });
+
+              // Insert new position
+              const { data: newPos, error: posError } = await supabaseClient
+                .from("player_positions")
+                .insert([
+                  {
+                    player_id: gameState.playerId,
+                    server_id: gameState.serverId,
+                    x: newPosition.x,
+                    y: newPosition.y,
+                  },
+                ])
+                .select()
+                .single();
+
+              if (posError) {
+                console.error("Error creating initial position:", posError);
+                console.error("Attempted values:", {
                   player_id: gameState.playerId,
                   server_id: gameState.serverId,
                   x: newPosition.x,
                   y: newPosition.y,
-                },
-              ])
-              .select()
-              .single();
-
-            if (posError) {
-              console.error("Error creating initial position:", posError);
-              console.error("Attempted values:", {
-                player_id: gameState.playerId,
-                server_id: gameState.serverId,
-                x: newPosition.x,
-                y: newPosition.y,
-              });
-              throw posError;
-            } else {
-              console.log("Successfully created new position:", newPos);
-              gameState.playerPos = newPosition;
+                });
+                throw posError;
+              } else {
+                console.log("Successfully created new position:", newPos);
+                gameState.playerPos = newPosition;
+              }
             }
+
+            // Add this line after setting the player position
+            updateTileInfo();
+
+            // Load inventory after player is authenticated and server is set up
+            await loadInventory();
+
+            // Add inventory subscription
+            supabaseClient
+              .channel("inventory_changes")
+              .on(
+                "postgres_changes",
+                {
+                  event: "*",
+                  schema: "public",
+                  table: "player_inventory",
+                  filter: `player_id=eq.${gameState.playerId}`,
+                },
+                (payload) => {
+                  loadInventory(); // Reload inventory when changes occur
+                }
+              )
+              .subscribe();
+
+            // Add player position subscription
+            supabaseClient
+              .channel("player_positions")
+              .on(
+                "postgres_changes",
+                {
+                  event: "*",
+                  schema: "public",
+                  table: "player_positions",
+                  filter: `server_id=eq.${gameState.serverId}`,
+                },
+                async (payload) => {
+                  if (
+                    payload.eventType === "INSERT" ||
+                    payload.eventType === "UPDATE"
+                  ) {
+                    if (
+                      payload.new &&
+                      payload.new.player_id !== gameState.playerId
+                    ) {
+                      // Update or add other player position
+                      gameState.otherPlayers.set(payload.new.player_id, {
+                        x: payload.new.x,
+                        y: payload.new.y,
+                      });
+                      renderMap();
+                    }
+                  } else if (payload.eventType === "DELETE") {
+                    if (
+                      payload.old &&
+                      payload.old.player_id !== gameState.playerId
+                    ) {
+                      // Remove player who left
+                      gameState.otherPlayers.delete(payload.old.player_id);
+                      renderMap();
+                    }
+                  }
+                }
+              )
+              .subscribe();
+
+            // Load initial positions of other players
+            const { data: otherPositions } = await supabaseClient
+              .from("player_positions")
+              .select("player_id, x, y")
+              .eq("server_id", gameState.serverId)
+              .neq("player_id", gameState.playerId);
+
+            // Initialize other players' positions
+            gameState.otherPlayers.clear();
+            if (otherPositions) {
+              otherPositions.forEach((pos) => {
+                gameState.otherPlayers.set(pos.player_id, { x: pos.x, y: pos.y });
+              });
+            }
+
+            // Initialize hotbar
+            updateHotbarDisplay();
+
+            initCanvas();
+            renderMap();
+            updateStatus();
+            startLastActiveUpdates();
+
+            // Start player animation
+            requestAnimationFrame(animatePlayer);
+
+            hideLoadingScreen();
+          } catch (error) {
+            console.error("Error initializing game:", error);
+          }
+        }
+
+        // Replace the initialization calls with:
+        initGame();
+
+        // Add window resize handler
+        window.addEventListener("resize", () => {
+          initCanvas();
+          renderMap();
+        });
+
+        // Add a flag to prevent double cleanup
+        let isCleaningUp = false;
+
+        async function leaveServer() {
+          if (!gameState.serverId || isCleaningUp) {
+            console.log(
+              "Skipping leaveServer - already cleaning up or no server ID"
+            );
+            return;
           }
 
-          // Add this line after setting the player position
-          updateTileInfo();
+          isCleaningUp = true;
 
-          // Load inventory after player is authenticated and server is set up
-          await loadInventory();
+          try {
+            console.log("Starting leaveServer process...");
 
-          // Add inventory subscription
-          supabaseClient
-            .channel("inventory_changes")
-            .on(
-              "postgres_changes",
-              {
-                event: "*",
-                schema: "public",
-                table: "player_inventory",
-                filter: `player_id=eq.${gameState.playerId}`,
+            // Remove all realtime subscriptions
+            await supabaseClient.channel("player_positions").unsubscribe();
+
+            // Delete server_players entry
+            const { error: serverPlayerError } = await supabaseClient
+              .from("server_players")
+              .delete()
+              .eq("player_id", gameState.playerId)
+              .eq("server_id", gameState.serverId);
+
+            if (serverPlayerError) {
+              console.error("Error removing server player:", serverPlayerError);
+            }
+
+            console.log("Completed leaveServer process");
+          } catch (error) {
+            console.error("Error in leaveServer:", error);
+          } finally {
+            isCleaningUp = false;
+          }
+        }
+
+        // Update event listeners to handle synchronously
+        window.addEventListener("beforeunload", (event) => {
+          console.log("beforeunload triggered");
+          // Call leaveServer synchronously
+          leaveServer();
+        });
+
+        window.addEventListener("pagehide", () => {
+          console.log("pagehide triggered");
+          // Call leaveServer synchronously
+          leaveServer();
+        });
+
+        // Keep visibility change for debugging but don't call leaveServer
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "hidden") {
+            console.log("Page hidden - not calling leaveServer");
+          }
+        });
+
+        // Also let's verify our TERRAIN_TYPES constant is correct
+        console.log("Available terrain types:", Object.keys(TERRAIN_TYPES));
+
+        async function handleLogout() {
+          try {
+            showLoadingScreen();
+
+            // Clean up subscriptions
+            if (gameState.playerSubscription) {
+              await gameState.playerSubscription.unsubscribe();
+            }
+
+            // Clean up game state
+            await leaveServer();
+
+            // Sign out from Supabase
+            const { error } = await supabaseClient.auth.signOut();
+            if (error) throw error;
+
+            // Reset game state
+            gameState = {
+              map: [],
+              playerPos: null,
+              health: 100,
+              score: 0,
+              inBattle: false,
+              currentEnemy: null,
+              playerHits: 0,
+              enemyHits: 0,
+              viewport: {
+                x: 0,
+                y: 0,
+                scale: 1,
+                isDragging: false,
+                lastX: 0,
+                lastY: 0,
+                cellSizeMultiplier: isDemoMode ? 0.085 : 0.04,
               },
-              (payload) => {
-                loadInventory(); // Reload inventory when changes occur
-              }
-            )
-            .subscribe();
+              playerId: null,
+              otherPlayers: new Map(),
+              configs: null,
+              serverId: null,
+              mapWidth: 20,
+              mapHeight: 20,
+              playerAnimation: {
+                bounceOffset: 0,
+              },
+              playerSubscription: null,
+            };
 
-          // Add player position subscription
-          supabaseClient
+            // Reset username display
+            document.getElementById("player-username").textContent = "-";
+
+            hideLoadingScreen();
+            // Show auth screen
+            showAuthScreen();
+          } catch (error) {
+            console.error("Error during logout:", error);
+            hideLoadingScreen();
+          }
+        }
+
+        const LOADING_MESSAGES = [
+          { emoji: "🌳", message: "Growing the forest..." },
+          { emoji: "🏔️", message: "Moving mountains..." },
+          { emoji: "🌱", message: "Planting the plains..." },
+          { emoji: "🌊", message: "Filling the oceans..." },
+          { emoji: "🦊", message: "Gathering the players..." },
+          { emoji: "🐻", message: "Preparing your character..." },
+        ];
+
+        function showLoadingScreen() {
+          const loadingScreen = document.getElementById("loading-screen");
+          const loadingEmoji = document.querySelector(".loading-emoji");
+          const loadingMessage = document.getElementById("loading-message");
+          let messageIndex = 0;
+
+          loadingScreen.style.display = "flex";
+
+          // Cycle through messages every 2 seconds
+          const interval = setInterval(() => {
+            messageIndex = (messageIndex + 1) % LOADING_MESSAGES.length;
+            const { emoji, message } = LOADING_MESSAGES[messageIndex];
+
+            loadingEmoji.textContent = emoji;
+            loadingMessage.textContent = message;
+          }, 2000);
+
+          // Store the interval ID on the loading screen element
+          loadingScreen.dataset.intervalId = interval;
+        }
+
+        function hideLoadingScreen() {
+          const loadingScreen = document.getElementById("loading-screen");
+          // Clear the message cycling interval
+          clearInterval(Number(loadingScreen.dataset.intervalId));
+          loadingScreen.style.display = "none";
+        }
+
+        function showVictoryAnimation() {
+          const battleMoves = document.getElementById("battle-moves");
+          battleMoves.innerHTML = "🎉 Victory! +100 points 🎉";
+        }
+
+        function showDefeatAnimation() {
+          const battleMoves = document.getElementById("battle-moves");
+          battleMoves.innerHTML = "😢 Defeated! 😢";
+        }
+
+        gameMap.addEventListener("wheel", (e) => {
+          e.preventDefault(); // Prevent default scroll behavior
+
+          // Determine zoom direction
+          const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+
+          // Calculate new cell size multiplier
+          const newMultiplier =
+            gameState.viewport.cellSizeMultiplier * zoomFactor;
+
+          // Adjust zoom limits to account for larger emojis
+          const minZoom = 0.02; // Keep minimum zoom the same
+          const maxZoom = 0.12; // Slightly reduced from 0.15 to prevent overlapping
+
+          if (newMultiplier >= minZoom && newMultiplier <= maxZoom) {
+            gameState.viewport.cellSizeMultiplier = newMultiplier;
+            renderMap();
+          }
+        });
+
+        function animatePlayer() {
+          // Create a smooth bounce using sine wave
+          gameState.playerAnimation.bounceOffset =
+            Math.sin(Date.now() * 0.003) * 3;
+
+          // Update only the player position
+          if (gameState.playerPos) {
+            renderMap();
+          }
+
+          // Continue the animation loop
+          requestAnimationFrame(animatePlayer);
+        }
+
+        // Update the handleHotbarSelection function
+        function handleHotbarSelection(e) {
+          // Only handle number keys 1-9 and 0
+          const key = e.key;
+          if (!gameState.inBattle && key >= "0" && key <= "9") {
+            const slotNumber = key === "0" ? 10 : parseInt(key);
+
+            // Remove selected class from all slots
+            document.querySelectorAll(".hotbar-slot").forEach((slot) => {
+              slot.classList.remove("selected");
+            });
+
+            // Add selected class to the clicked slot
+            const selectedSlot = document.querySelector(
+              `.hotbar-slot[data-slot="${slotNumber}"]`
+            );
+            if (selectedSlot) {
+              selectedSlot.classList.add("selected");
+              gameState.inventory.selectedSlot = slotNumber;
+              useItem();
+            }
+          }
+        }
+
+        // Add click handler for hotbar slots
+        document.addEventListener("DOMContentLoaded", async () => {
+          // Existing hotbar slot event listeners
+          document.querySelectorAll(".hotbar-slot").forEach((slot) => {
+            slot.addEventListener("click", () => {
+              const slotNumber = parseInt(slot.dataset.slot);
+
+              // Remove selected class from all slots
+              document.querySelectorAll(".hotbar-slot").forEach((s) => {
+                s.classList.remove("selected");
+              });
+
+              // Add selected class to clicked slot
+              slot.classList.add("selected");
+              gameState.inventory.selectedSlot = slotNumber;
+              useItem();
+            });
+          });
+
+          // Load recipes after DOM is loaded
+          await loadRecipes();
+        });
+
+        async function loadRecipes() {
+          try {
+            const { data: recipes, error } = await supabaseClient.from(
+              "crafting_recipes"
+            ).select(`
+                id,
+                quantity_produced,
+                result_item_id (id, emoji, name),
+                crafting_ingredients (
+                  quantity_required,
+                  item_id (id, emoji, name)
+                )
+              `);
+
+            if (error) throw error;
+
+            // Store recipes in game state
+            gameState.crafting.recipes = recipes;
+
+            const recipesContainer = document.getElementById("available-recipes");
+            recipesContainer.innerHTML = "<h4>Available Recipes:</h4>";
+
+            recipes.forEach((recipe, index) => {
+              const recipeDiv = document.createElement("div");
+              recipeDiv.className = "recipe-item";
+              recipeDiv.onclick = () => {
+                gameState.crafting.selectedRecipeIndex = index;
+                document
+                  .querySelectorAll(".recipe-item")
+                  .forEach((item) => item.classList.remove("selected"));
+                recipeDiv.classList.add("selected");
+                showRecipeDetails(recipe);
+              };
+              recipeDiv.innerHTML = `
+                ${recipe.result_item_id.emoji} ${recipe.result_item_id.name}
+              `;
+              recipesContainer.appendChild(recipeDiv);
+            });
+          } catch (error) {
+            console.error("Error loading recipes:", error);
+          }
+        }
+
+        let selectedRecipe = null;
+
+        function showRecipeDetails(recipe) {
+          selectedRecipe = recipe;
+          const detailsDiv = document.getElementById("recipe-details");
+
+          let ingredientsList = recipe.crafting_ingredients
+            .map(
+              (ing) =>
+                `${ing.quantity_required}x ${ing.item_id.emoji} ${ing.item_id.name}`
+            )
+            .join("<br>");
+
+          detailsDiv.innerHTML = `
+            <h4>Recipe Details:</h4>
+            <div class="recipe-result">
+              Creates: ${recipe.quantity_produced}x ${recipe.result_item_id.emoji} ${recipe.result_item_id.name}
+            </div>
+            <div class="recipe-ingredients">
+              Requires:<br>
+              ${ingredientsList}
+            </div>
+          `;
+
+          document.getElementById("craft-button").style.display = "block";
+        }
+
+        async function craftSelectedRecipe() {
+          if (!selectedRecipe) return;
+
+          try {
+            const { data, error } = await supabaseClient.rpc("handle_crafting", {
+              p_player_id: gameState.playerId,
+              p_recipe_id: selectedRecipe.id,
+            });
+
+            if (error) throw error;
+
+            if (data.success) {
+              showCollectionMessage(data.message);
+              await loadInventory(); // Reload inventory after successful craft
+            } else {
+              showCollectionMessage(data.message); // Show what's missing
+            }
+          } catch (error) {
+            console.error("Error crafting item:", error);
+          }
+        }
+
+        async function loadInventory() {
+          try {
+            const { data, error } = await supabaseClient
+              .from("player_inventory")
+              .select("slot, item_id, quantity")
+              .eq("player_id", gameState.playerId);
+
+            if (error) throw error;
+
+            // Reset inventory
+            gameState.inventory.items = {};
+            gameState.inventory.stacks = {};
+
+            // Load items from database
+            for (const item of data) {
+              // Get emoji from items table
+              const { data: itemData, error: itemError } = await supabaseClient
+                .from("items")
+                .select("emoji")
+                .eq("id", item.item_id)
+                .single();
+
+              if (itemError) {
+                console.error("Error fetching item data:", itemError);
+                continue;
+              }
+
+              if (itemData) {
+                gameState.inventory.items[item.slot] = itemData.emoji;
+                gameState.inventory.stacks[item.slot] = item.quantity;
+              }
+            }
+
+            updateHotbarDisplay();
+          } catch (error) {
+            console.error("Error loading inventory:", error);
+          }
+        }
+
+        async function setupPlayerSubscriptions() {
+          // Unsubscribe from any existing subscriptions
+          if (gameState.playerSubscription) {
+            gameState.playerSubscription.unsubscribe();
+          }
+          if (gameState.mapSubscription) {
+            gameState.mapSubscription.unsubscribe();
+          }
+
+          // Subscribe to player position changes
+          gameState.playerSubscription = supabaseClient
             .channel("player_positions")
             .on(
               "postgres_changes",
@@ -1668,615 +2139,145 @@
                 table: "player_positions",
                 filter: `server_id=eq.${gameState.serverId}`,
               },
-              async (payload) => {
-                if (
-                  payload.eventType === "INSERT" ||
-                  payload.eventType === "UPDATE"
-                ) {
-                  if (
-                    payload.new &&
-                    payload.new.player_id !== gameState.playerId
-                  ) {
-                    // Update or add other player position
-                    gameState.otherPlayers.set(payload.new.player_id, {
-                      x: payload.new.x,
-                      y: payload.new.y,
+              (payload) => {
+                if (!gameState.playerPos) return; // Don't process if player not initialized
+
+                const position = payload.new;
+                // Don't update our own position from the subscription
+                if (position.player_id === gameState.playerId) return;
+
+                switch (payload.eventType) {
+                  case "INSERT":
+                  case "UPDATE":
+                    gameState.otherPlayers.set(position.player_id, {
+                      x: position.x,
+                      y: position.y,
+                      emoji: position.emoji,
                     });
-                    renderMap();
-                  }
-                } else if (payload.eventType === "DELETE") {
-                  if (
-                    payload.old &&
-                    payload.old.player_id !== gameState.playerId
-                  ) {
-                    // Remove player who left
-                    gameState.otherPlayers.delete(payload.old.player_id);
-                    renderMap();
-                  }
+                    break;
+                  case "DELETE":
+                    gameState.otherPlayers.delete(position.player_id);
+                    break;
                 }
+                renderMap();
               }
             )
             .subscribe();
 
-          // Load initial positions of other players
-          const { data: otherPositions } = await supabaseClient
-            .from("player_positions")
-            .select("player_id, x, y")
-            .eq("server_id", gameState.serverId)
-            .neq("player_id", gameState.playerId);
-
-          // Initialize other players' positions
-          gameState.otherPlayers.clear();
-          if (otherPositions) {
-            otherPositions.forEach((pos) => {
-              gameState.otherPlayers.set(pos.player_id, { x: pos.x, y: pos.y });
-            });
-          }
-
-          // Initialize hotbar
-          updateHotbarDisplay();
-
-          initCanvas();
-          renderMap();
-          updateStatus();
-          startLastActiveUpdates();
-
-          // Start player animation
-          requestAnimationFrame(animatePlayer);
-
-          hideLoadingScreen();
-        } catch (error) {
-          console.error("Error initializing game:", error);
-        }
-      }
-
-      // Replace the initialization calls with:
-      initGame();
-
-      // Add window resize handler
-      window.addEventListener("resize", () => {
-        initCanvas();
-        renderMap();
-      });
-
-      // Add a flag to prevent double cleanup
-      let isCleaningUp = false;
-
-      async function leaveServer() {
-        if (!gameState.serverId || isCleaningUp) {
-          console.log(
-            "Skipping leaveServer - already cleaning up or no server ID"
-          );
-          return;
-        }
-
-        isCleaningUp = true;
-
-        try {
-          console.log("Starting leaveServer process...");
-
-          // Remove all realtime subscriptions
-          await supabaseClient.channel("player_positions").unsubscribe();
-
-          // Delete server_players entry
-          const { error: serverPlayerError } = await supabaseClient
-            .from("server_players")
-            .delete()
-            .eq("player_id", gameState.playerId)
-            .eq("server_id", gameState.serverId);
-
-          if (serverPlayerError) {
-            console.error("Error removing server player:", serverPlayerError);
-          }
-
-          console.log("Completed leaveServer process");
-        } catch (error) {
-          console.error("Error in leaveServer:", error);
-        } finally {
-          isCleaningUp = false;
-        }
-      }
-
-      // Update event listeners to handle synchronously
-      window.addEventListener("beforeunload", (event) => {
-        console.log("beforeunload triggered");
-        // Call leaveServer synchronously
-        leaveServer();
-      });
-
-      window.addEventListener("pagehide", () => {
-        console.log("pagehide triggered");
-        // Call leaveServer synchronously
-        leaveServer();
-      });
-
-      // Keep visibility change for debugging but don't call leaveServer
-      document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "hidden") {
-          console.log("Page hidden - not calling leaveServer");
-        }
-      });
-
-      // Also let's verify our TERRAIN_TYPES constant is correct
-      console.log("Available terrain types:", Object.keys(TERRAIN_TYPES));
-
-      async function handleLogout() {
-        try {
-          showLoadingScreen();
-
-          // Clean up subscriptions
-          if (gameState.playerSubscription) {
-            await gameState.playerSubscription.unsubscribe();
-          }
-
-          // Clean up game state
-          await leaveServer();
-
-          // Sign out from Supabase
-          const { error } = await supabaseClient.auth.signOut();
-          if (error) throw error;
-
-          // Reset game state
-          gameState = {
-            map: [],
-            playerPos: null,
-            health: 100,
-            score: 0,
-            inBattle: false,
-            currentEnemy: null,
-            playerHits: 0,
-            enemyHits: 0,
-            viewport: {
-              x: 0,
-              y: 0,
-              scale: 1,
-              isDragging: false,
-              lastX: 0,
-              lastY: 0,
-              cellSizeMultiplier: isDemoMode ? 0.085 : 0.04,
-            },
-            playerId: null,
-            otherPlayers: new Map(),
-            configs: null,
-            serverId: null,
-            mapWidth: 20,
-            mapHeight: 20,
-            playerAnimation: {
-              bounceOffset: 0,
-            },
-            playerSubscription: null,
-          };
-
-          // Reset username display
-          document.getElementById("player-username").textContent = "-";
-
-          hideLoadingScreen();
-          // Show auth screen
-          showAuthScreen();
-        } catch (error) {
-          console.error("Error during logout:", error);
-          hideLoadingScreen();
-        }
-      }
-
-      const LOADING_MESSAGES = [
-        { emoji: "🌳", message: "Growing the forest..." },
-        { emoji: "🏔️", message: "Moving mountains..." },
-        { emoji: "🌱", message: "Planting the plains..." },
-        { emoji: "🌊", message: "Filling the oceans..." },
-        { emoji: "🦊", message: "Gathering the players..." },
-        { emoji: "🐻", message: "Preparing your character..." },
-      ];
-
-      function showLoadingScreen() {
-        const loadingScreen = document.getElementById("loading-screen");
-        const loadingEmoji = document.querySelector(".loading-emoji");
-        const loadingMessage = document.getElementById("loading-message");
-        let messageIndex = 0;
-
-        loadingScreen.style.display = "flex";
-
-        // Cycle through messages every 2 seconds
-        const interval = setInterval(() => {
-          messageIndex = (messageIndex + 1) % LOADING_MESSAGES.length;
-          const { emoji, message } = LOADING_MESSAGES[messageIndex];
-
-          loadingEmoji.textContent = emoji;
-          loadingMessage.textContent = message;
-        }, 2000);
-
-        // Store the interval ID on the loading screen element
-        loadingScreen.dataset.intervalId = interval;
-      }
-
-      function hideLoadingScreen() {
-        const loadingScreen = document.getElementById("loading-screen");
-        // Clear the message cycling interval
-        clearInterval(Number(loadingScreen.dataset.intervalId));
-        loadingScreen.style.display = "none";
-      }
-
-      function showVictoryAnimation() {
-        const battleMoves = document.getElementById("battle-moves");
-        battleMoves.innerHTML = "🎉 Victory! +100 points 🎉";
-      }
-
-      function showDefeatAnimation() {
-        const battleMoves = document.getElementById("battle-moves");
-        battleMoves.innerHTML = "😢 Defeated! 😢";
-      }
-
-      gameMap.addEventListener("wheel", (e) => {
-        e.preventDefault(); // Prevent default scroll behavior
-
-        // Determine zoom direction
-        const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-
-        // Calculate new cell size multiplier
-        const newMultiplier =
-          gameState.viewport.cellSizeMultiplier * zoomFactor;
-
-        // Adjust zoom limits to account for larger emojis
-        const minZoom = 0.02; // Keep minimum zoom the same
-        const maxZoom = 0.12; // Slightly reduced from 0.15 to prevent overlapping
-
-        if (newMultiplier >= minZoom && newMultiplier <= maxZoom) {
-          gameState.viewport.cellSizeMultiplier = newMultiplier;
-          renderMap();
-        }
-      });
-
-      function animatePlayer() {
-        // Create a smooth bounce using sine wave
-        gameState.playerAnimation.bounceOffset =
-          Math.sin(Date.now() * 0.003) * 3;
-
-        // Update only the player position
-        if (gameState.playerPos) {
-          renderMap();
-        }
-
-        // Continue the animation loop
-        requestAnimationFrame(animatePlayer);
-      }
-
-      // Update the handleHotbarSelection function
-      function handleHotbarSelection(e) {
-        // Only handle number keys 1-9 and 0
-        const key = e.key;
-        if (!gameState.inBattle && key >= "0" && key <= "9") {
-          const slotNumber = key === "0" ? 10 : parseInt(key);
-
-          // Remove selected class from all slots
-          document.querySelectorAll(".hotbar-slot").forEach((slot) => {
-            slot.classList.remove("selected");
-          });
-
-          // Add selected class to the clicked slot
-          const selectedSlot = document.querySelector(
-            `.hotbar-slot[data-slot="${slotNumber}"]`
-          );
-          if (selectedSlot) {
-            selectedSlot.classList.add("selected");
-            gameState.inventory.selectedSlot = slotNumber;
-            useItem();
-          }
-        }
-      }
-
-      // Add click handler for hotbar slots
-      document.addEventListener("DOMContentLoaded", async () => {
-        // Existing hotbar slot event listeners
-        document.querySelectorAll(".hotbar-slot").forEach((slot) => {
-          slot.addEventListener("click", () => {
-            const slotNumber = parseInt(slot.dataset.slot);
-
-            // Remove selected class from all slots
-            document.querySelectorAll(".hotbar-slot").forEach((s) => {
-              s.classList.remove("selected");
-            });
-
-            // Add selected class to clicked slot
-            slot.classList.add("selected");
-            gameState.inventory.selectedSlot = slotNumber;
-            useItem();
-          });
-        });
-
-        // Load recipes after DOM is loaded
-        await loadRecipes();
-      });
-
-      async function loadRecipes() {
-        try {
-          const { data: recipes, error } = await supabaseClient.from(
-            "crafting_recipes"
-          ).select(`
-              id,
-              quantity_produced,
-              result_item_id (id, emoji, name),
-              crafting_ingredients (
-                quantity_required,
-                item_id (id, emoji, name)
-              )
-            `);
-
-          if (error) throw error;
-
-          // Store recipes in game state
-          gameState.crafting.recipes = recipes;
-
-          const recipesContainer = document.getElementById("available-recipes");
-          recipesContainer.innerHTML = "<h4>Available Recipes:</h4>";
-
-          recipes.forEach((recipe, index) => {
-            const recipeDiv = document.createElement("div");
-            recipeDiv.className = "recipe-item";
-            recipeDiv.onclick = () => {
-              gameState.crafting.selectedRecipeIndex = index;
-              document
-                .querySelectorAll(".recipe-item")
-                .forEach((item) => item.classList.remove("selected"));
-              recipeDiv.classList.add("selected");
-              showRecipeDetails(recipe);
-            };
-            recipeDiv.innerHTML = `
-              ${recipe.result_item_id.emoji} ${recipe.result_item_id.name}
-            `;
-            recipesContainer.appendChild(recipeDiv);
-          });
-        } catch (error) {
-          console.error("Error loading recipes:", error);
-        }
-      }
-
-      let selectedRecipe = null;
-
-      function showRecipeDetails(recipe) {
-        selectedRecipe = recipe;
-        const detailsDiv = document.getElementById("recipe-details");
-
-        let ingredientsList = recipe.crafting_ingredients
-          .map(
-            (ing) =>
-              `${ing.quantity_required}x ${ing.item_id.emoji} ${ing.item_id.name}`
-          )
-          .join("<br>");
-
-        detailsDiv.innerHTML = `
-          <h4>Recipe Details:</h4>
-          <div class="recipe-result">
-            Creates: ${recipe.quantity_produced}x ${recipe.result_item_id.emoji} ${recipe.result_item_id.name}
-          </div>
-          <div class="recipe-ingredients">
-            Requires:<br>
-            ${ingredientsList}
-          </div>
-        `;
-
-        document.getElementById("craft-button").style.display = "block";
-      }
-
-      async function craftSelectedRecipe() {
-        if (!selectedRecipe) return;
-
-        try {
-          const { data, error } = await supabaseClient.rpc("handle_crafting", {
-            p_player_id: gameState.playerId,
-            p_recipe_id: selectedRecipe.id,
-          });
-
-          if (error) throw error;
-
-          if (data.success) {
-            showCollectionMessage(data.message);
-            await loadInventory(); // Reload inventory after successful craft
-          } else {
-            showCollectionMessage(data.message); // Show what's missing
-          }
-        } catch (error) {
-          console.error("Error crafting item:", error);
-        }
-      }
-
-      async function loadInventory() {
-        try {
-          const { data, error } = await supabaseClient
-            .from("player_inventory")
-            .select("slot, item_id, quantity")
-            .eq("player_id", gameState.playerId);
-
-          if (error) throw error;
-
-          // Reset inventory
-          gameState.inventory.items = {};
-          gameState.inventory.stacks = {};
-
-          // Load items from database
-          for (const item of data) {
-            // Get emoji from items table
-            const { data: itemData, error: itemError } = await supabaseClient
-              .from("items")
-              .select("emoji")
-              .eq("id", item.item_id)
-              .single();
-
-            if (itemError) {
-              console.error("Error fetching item data:", itemError);
-              continue;
-            }
-
-            if (itemData) {
-              gameState.inventory.items[item.slot] = itemData.emoji;
-              gameState.inventory.stacks[item.slot] = item.quantity;
-            }
-          }
-
-          updateHotbarDisplay();
-        } catch (error) {
-          console.error("Error loading inventory:", error);
-        }
-      }
-
-      async function setupPlayerSubscriptions() {
-        // Unsubscribe from any existing subscriptions
-        if (gameState.playerSubscription) {
-          gameState.playerSubscription.unsubscribe();
-        }
-        if (gameState.mapSubscription) {
-          gameState.mapSubscription.unsubscribe();
-        }
-
-        // Subscribe to player position changes
-        gameState.playerSubscription = supabaseClient
-          .channel("player_positions")
-          .on(
-            "postgres_changes",
-            {
-              event: "*",
-              schema: "public",
-              table: "player_positions",
-              filter: `server_id=eq.${gameState.serverId}`,
-            },
-            (payload) => {
-              if (!gameState.playerPos) return; // Don't process if player not initialized
-
-              const position = payload.new;
-              // Don't update our own position from the subscription
-              if (position.player_id === gameState.playerId) return;
-
-              switch (payload.eventType) {
-                case "INSERT":
-                case "UPDATE":
-                  gameState.otherPlayers.set(position.player_id, {
-                    x: position.x,
-                    y: position.y,
-                    emoji: position.emoji,
-                  });
-                  break;
-                case "DELETE":
-                  gameState.otherPlayers.delete(position.player_id);
-                  break;
+          // Subscribe to map changes
+          gameState.mapSubscription = supabaseClient
+            .channel("map_changes")
+            .on(
+              "postgres_changes",
+              {
+                event: "UPDATE", // Be more specific about the event we want
+                schema: "public",
+                table: "map_data",
+                filter: `server_id=eq.${gameState.serverId}`,
+              },
+              (payload) => {
+                console.log("Map change received:", payload); // Add debug logging
+                if (!gameState.map) return;
+
+                const { x, y, terrain_type } = payload.new;
+                if (
+                  x >= 0 &&
+                  x < gameState.mapWidth &&
+                  y >= 0 &&
+                  y < gameState.mapHeight &&
+                  TERRAIN_TYPES[terrain_type]
+                ) {
+                  console.log(`Updating map at ${x},${y} to ${terrain_type}`);
+                  gameState.map[y][x] = TERRAIN_TYPES[terrain_type];
+                  renderMap();
+                }
               }
-              renderMap();
-            }
-          )
-          .subscribe();
-
-        // Subscribe to map changes
-        gameState.mapSubscription = supabaseClient
-          .channel("map_changes")
-          .on(
-            "postgres_changes",
-            {
-              event: "UPDATE", // Be more specific about the event we want
-              schema: "public",
-              table: "map_data",
-              filter: `server_id=eq.${gameState.serverId}`,
-            },
-            (payload) => {
-              console.log("Map change received:", payload); // Add debug logging
-              if (!gameState.map) return;
-
-              const { x, y, terrain_type } = payload.new;
-              if (
-                x >= 0 &&
-                x < gameState.mapWidth &&
-                y >= 0 &&
-                y < gameState.mapHeight &&
-                TERRAIN_TYPES[terrain_type]
-              ) {
-                console.log(`Updating map at ${x},${y} to ${terrain_type}`);
-                gameState.map[y][x] = TERRAIN_TYPES[terrain_type];
-                renderMap();
-              }
-            }
-          )
-          .subscribe((status) => {
-            console.log("Map subscription status:", status); // Debug subscription status
-          });
-      }
-
-      function updateTileInfo() {
-        if (!gameState.playerPos) {
-          console.log("updateTileInfo: No player position");
-          return;
+            )
+            .subscribe((status) => {
+              console.log("Map subscription status:", status); // Debug subscription status
+            });
         }
 
-        if (!gameState.map || !gameState.map[gameState.playerPos.y]) {
-          console.log("updateTileInfo: Map not loaded properly");
-          return;
-        }
+        function updateTileInfo() {
+          if (!gameState.playerPos) {
+            console.log("updateTileInfo: No player position");
+            return;
+          }
 
-        const currentTile =
-          gameState.map[gameState.playerPos.y][gameState.playerPos.x];
-        console.log("updateTileInfo: Current tile:", currentTile);
+          if (!gameState.map || !gameState.map[gameState.playerPos.y]) {
+            console.log("updateTileInfo: Map not loaded properly");
+            return;
+          }
 
-        // Update terrain
-        const terrainDisplay = document.getElementById("tile-terrain");
-        if (terrainDisplay) {
-          terrainDisplay.textContent = currentTile.emoji;
-          console.log("updateTileInfo: Set terrain to:", currentTile.emoji);
-        }
+          const currentTile =
+            gameState.map[gameState.playerPos.y][gameState.playerPos.x];
+          console.log("updateTileInfo: Current tile:", currentTile);
 
-        // Update resources
-        const resourcesDisplay = document.getElementById("tile-resources");
-        let resources = "";
+          // Update terrain
+          const terrainDisplay = document.getElementById("tile-terrain");
+          if (terrainDisplay) {
+            terrainDisplay.textContent = currentTile.emoji;
+            console.log("updateTileInfo: Set terrain to:", currentTile.emoji);
+          }
 
-        if (currentTile.emoji === TERRAIN_TYPES.FOREST.emoji) {
-          resources = "🪵";
-          console.log(
-            "updateTileInfo: Forest tile detected, showing wood resource"
-          );
-        }
-        if (resourcesDisplay) {
-          resourcesDisplay.textContent = resources;
-        }
+          // Update resources
+          const resourcesDisplay = document.getElementById("tile-resources");
+          let resources = "";
 
-        // Update actions - for now, always empty
-        const actionsDisplay = document.getElementById("tile-actions");
-        if (actionsDisplay) {
-          actionsDisplay.textContent = "";
-        }
-      }
+          if (currentTile.emoji === TERRAIN_TYPES.FOREST.emoji) {
+            resources = "🪵";
+            console.log(
+              "updateTileInfo: Forest tile detected, showing wood resource"
+            );
+          }
+          if (resourcesDisplay) {
+            resourcesDisplay.textContent = resources;
+          }
 
-      updateTileInfo();
-
-      function navigateRecipes(direction) {
-        const recipes = gameState.crafting.recipes;
-        if (recipes.length === 0) return;
-
-        // Update selected index
-        let newIndex = gameState.crafting.selectedRecipeIndex + direction;
-        if (newIndex >= recipes.length) newIndex = 0;
-        if (newIndex < 0) newIndex = recipes.length - 1;
-
-        gameState.crafting.selectedRecipeIndex = newIndex;
-
-        // Update UI
-        document.querySelectorAll(".recipe-item").forEach((item, index) => {
-          item.classList.toggle("selected", index === newIndex);
-        });
-
-        // Show details of selected recipe
-        showRecipeDetails(recipes[newIndex]);
-      }
-
-      function openCraftingMenu() {
-        gameState.crafting.isOpen = true;
-        const modal = document.getElementById("crafting-modal");
-        modal.classList.add("active");
-
-        // Select first recipe by default
-        if (gameState.crafting.recipes.length > 0) {
-          gameState.crafting.selectedRecipeIndex = 0;
-          const firstRecipe = document.querySelector(".recipe-item");
-          if (firstRecipe) {
-            firstRecipe.classList.add("selected");
-            showRecipeDetails(gameState.crafting.recipes[0]);
+          // Update actions - for now, always empty
+          const actionsDisplay = document.getElementById("tile-actions");
+          if (actionsDisplay) {
+            actionsDisplay.textContent = "";
           }
         }
-      }
+
+        updateTileInfo();
+
+        function navigateRecipes(direction) {
+          const recipes = gameState.crafting.recipes;
+          if (recipes.length === 0) return;
+
+          // Update selected index
+          let newIndex = gameState.crafting.selectedRecipeIndex + direction;
+          if (newIndex >= recipes.length) newIndex = 0;
+          if (newIndex < 0) newIndex = recipes.length - 1;
+
+          gameState.crafting.selectedRecipeIndex = newIndex;
+
+          // Update UI
+          document.querySelectorAll(".recipe-item").forEach((item, index) => {
+            item.classList.toggle("selected", index === newIndex);
+          });
+
+          // Show details of selected recipe
+          showRecipeDetails(recipes[newIndex]);
+        }
+
+        function openCraftingMenu() {
+          gameState.crafting.isOpen = true;
+          const modal = document.getElementById("crafting-modal");
+          modal.classList.add("active");
+
+          // Select first recipe by default
+          if (gameState.crafting.recipes.length > 0) {
+            gameState.crafting.selectedRecipeIndex = 0;
+            const firstRecipe = document.querySelector(".recipe-item");
+            if (firstRecipe) {
+              firstRecipe.classList.add("selected");
+              showRecipeDetails(gameState.crafting.recipes[0]);
+            }
+          }
+        }
 
       function closeCraftingMenu() {
         gameState.crafting.isOpen = false;
@@ -2284,7 +2285,7 @@
         const modal = document.getElementById("crafting-modal");
         modal.classList.remove("active");
         document.getElementById("craft-button").style.display = "none";
-        document.getElementById("recipe-details").innerHTML = "";
+        document.getElementById("recipe-details").innerHTML = ""; 
         document
           .querySelectorAll(".recipe-item")
           .forEach((item) => item.classList.remove("selected"));
