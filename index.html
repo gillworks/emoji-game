@@ -45,6 +45,63 @@
         stacks: {},
       };
 
+      // Add this near the top with other utility functions
+      function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+          const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+          };
+          clearTimeout(timeout);
+          timeout = setTimeout(later, wait);
+        };
+      }
+
+      // Add this before the debouncedUseItem function
+      function showCollectionMessage(message) {
+        const messageElement = document.createElement("div");
+        messageElement.className = "collection-message";
+        messageElement.textContent = message;
+        document.getElementById("game-container").appendChild(messageElement);
+
+        // Animate and remove the message
+        setTimeout(() => {
+          messageElement.remove();
+        }, 2000);
+      }
+
+      // Update the useItem function to be debounced
+      const debouncedUseItem = debounce(async function() {
+        if (!gameState.playerPos || gameState.inBattle) return;
+
+        const selectedSlot = gameState.inventory.selectedSlot;
+        if (!selectedSlot) return;
+
+        try {
+          const { data, error } = await supabaseClient.rpc(
+            "handle_item_action",
+            {
+              p_player_id: gameState.playerId,
+              p_item_slot: selectedSlot,
+              p_x: gameState.playerPos.x,
+              p_y: gameState.playerPos.y,
+              p_server_id: gameState.serverId,
+            }
+          );
+
+          if (error) throw error;
+
+          if (data.success) {
+            showCollectionMessage(data.message);
+            await loadInventory();
+            renderMap();
+          }
+        } catch (error) {
+          console.error("Error in useItem:", error);
+        }
+      }, 250); // 250ms debounce time
+
       function handleHotbarSelection(e) {
         // Handle both number row keys and numpad keys
         const key = e.key;
@@ -64,7 +121,7 @@
           if (selectedSlot) {
             selectedSlot.classList.add("selected");
             gameState.inventory.selectedSlot = slotNumber;
-            useItem();
+            debouncedUseItem();
           }
         }
       }
@@ -111,49 +168,6 @@
 
       updateHotbarDisplay();
 
-      async function useItem() {
-        if (!gameState.playerPos || gameState.inBattle) return;
-
-        const selectedSlot = gameState.inventory.selectedSlot;
-        if (!selectedSlot) return;
-
-        try {
-          const { data, error } = await supabaseClient.rpc(
-            "handle_item_action",
-            {
-              p_player_id: gameState.playerId,
-              p_item_slot: selectedSlot,
-              p_x: gameState.playerPos.x,
-              p_y: gameState.playerPos.y,
-              p_server_id: gameState.serverId,
-            }
-          );
-
-          if (error) throw error;
-
-          if (data.success) {
-            showCollectionMessage(data.message);
-            await loadInventory();
-            renderMap();
-          }
-        } catch (error) {
-          console.error("Error in useItem:", error);
-        }
-      }
-
-      // Add function to show collection messages
-      function showCollectionMessage(message) {
-        const messageElement = document.createElement("div");
-        messageElement.className = "collection-message";
-        messageElement.textContent = message;
-        document.getElementById("game-container").appendChild(messageElement);
-
-        // Animate and remove the message
-        setTimeout(() => {
-          messageElement.remove();
-        }, 2000);
-      }
-
       // Add click handler for hotbar slots
       document.querySelectorAll(".hotbar-slot").forEach((slot) => {
         slot.addEventListener("click", () => {
@@ -167,7 +181,7 @@
           // Add selected class to clicked slot
           slot.classList.add("selected");
           gameState.inventory.selectedSlot = slotNumber;
-          useItem();
+          debouncedUseItem();
         });
       });
 
@@ -1592,7 +1606,7 @@
             if (selectedSlot) {
               selectedSlot.classList.add("selected");
               gameState.inventory.selectedSlot = slotNumber;
-              useItem();
+              debouncedUseItem();
             }
             return;
           }
@@ -2067,7 +2081,7 @@
             if (selectedSlot) {
               selectedSlot.classList.add("selected");
               gameState.inventory.selectedSlot = slotNumber;
-              useItem();
+              debouncedUseItem();
             }
           }
         }
@@ -2087,7 +2101,7 @@
               // Add selected class to clicked slot
               slot.classList.add("selected");
               gameState.inventory.selectedSlot = slotNumber;
-              useItem();
+              debouncedUseItem();
             });
           });
 
@@ -2850,7 +2864,7 @@
               });
               slot.classList.add('selected');
               gameState.inventory.selectedSlot = slotNumber;
-              useItem();
+              debouncedUseItem();
             }
           });
         });

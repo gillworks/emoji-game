@@ -360,7 +360,8 @@ BEGIN
     INTO v_item_type, v_is_tool
     FROM player_inventory pi
     JOIN items i ON i.id = pi.item_id
-    WHERE pi.player_id = p_player_id AND pi.slot = p_item_slot;
+    WHERE pi.player_id = p_player_id AND pi.slot = p_item_slot
+    LIMIT 1;  -- Add LIMIT 1 to ensure we only get one row
 
     IF v_item_type IS NULL THEN
         RETURN jsonb_build_object(
