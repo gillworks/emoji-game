@@ -4,7 +4,7 @@
     <title>Emoji Adventure</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
-    <link rel="stylesheet" href="styles.css?v=2" />
+    <link rel="stylesheet" href="styles.css?v=4" />
     <!-- Increment v=1 to v=2, etc when you make changes -->
     <link
       rel="stylesheet"
@@ -343,9 +343,33 @@
           </div>
         </div>
       </div>
-      <div id="game-map">
-        <canvas id="map-canvas"></canvas>
+
+      <div id="game-layout">
+        <div id="sidebar">
+          <div class="sidebar-section">
+            <h3>Current Location</h3>
+            <div id="tile-info-panel">
+              <div class="hotbar-slot" data-slot="terrain">
+                <div class="slot-content" id="tile-terrain"></div>
+                <div class="slot-label">Terrain</div>
+              </div>
+              <div class="hotbar-slot" data-slot="resources">
+                <div class="slot-content" id="tile-resources"></div>
+                <div class="slot-label">Resources</div>
+              </div>
+              <div class="hotbar-slot" data-slot="actions">
+                <div class="slot-content" id="tile-actions"></div>
+                <div class="slot-label">E to interact</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="game-map">
+          <canvas id="map-canvas"></canvas>
+        </div>
       </div>
+
       <div id="battle-screen">
         <div class="battle-container">
           <div class="battle-fighter">
@@ -383,25 +407,7 @@
           </button>
         </div>
       </div>
-      <div id="game-over">
-        <h1>Game Over!</h1>
-        <p>Final Score: <span id="final-score">0</span></p>
-        <button id="restart-button" onclick="restartGame()">Play Again</button>
-      </div>
-      <div id="tile-info-panel">
-        <div class="hotbar-slot" data-slot="terrain">
-          <div class="hotkey"></div>
-          <div class="slot-content" id="tile-terrain"></div>
-        </div>
-        <div class="hotbar-slot" data-slot="resources">
-          <div class="hotkey"></div>
-          <div class="slot-content" id="tile-resources"></div>
-        </div>
-        <div class="hotbar-slot" data-slot="actions">
-          <div class="hotkey">E</div>
-          <div class="slot-content" id="tile-actions"></div>
-        </div>
-      </div>
+
       <div id="inventory-hotbar">
         <div class="hotbar-slot" data-slot="1" style="cursor: pointer">
           <div class="hotkey">1</div>
@@ -444,6 +450,12 @@
           <div class="slot-content"></div>
         </div>
       </div>
+    </div>
+
+    <div id="game-over">
+      <h1>Game Over!</h1>
+      <p>Final Score: <span id="final-score">0</span></p>
+      <button id="restart-button" onclick="restartGame()">Play Again</button>
     </div>
 
     <script>
@@ -1681,6 +1693,9 @@
             }
           }
 
+          // Add this line after setting the player position
+          updateTileInfo();
+
           // Load inventory after player is authenticated and server is set up
           await loadInventory();
 
@@ -2184,21 +2199,10 @@
           resourcesDisplay.textContent = resources;
         }
 
-        // Update actions
+        // Update actions - for now, always empty
         const actionsDisplay = document.getElementById("tile-actions");
-        let actions = "";
-
-        if (
-          currentTile.emoji === TERRAIN_TYPES.FOREST.emoji &&
-          gameState.inventory.selectedSlot === 1
-        ) {
-          actions = "🪓";
-          console.log(
-            "updateTileInfo: Forest tile with axe selected, showing chop action"
-          );
-        }
         if (actionsDisplay) {
-          actionsDisplay.textContent = actions;
+          actionsDisplay.textContent = "";
         }
       }
 
