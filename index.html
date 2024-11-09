@@ -4,7 +4,7 @@
     <title>Emoji Adventure</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
-    <link rel="stylesheet" href="styles.css?v=11" />
+    <link rel="stylesheet" href="styles.css?v=12" />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
@@ -290,6 +290,17 @@
                 <div class="slot-content" id="tile-actions"></div>
                 <div class="slot-label">E to interact</div>
               </div>
+            </div>
+          </div>
+          <!-- Find the sidebar section and add this after the existing content -->
+          <div class="sidebar-section" id="admin-controls" style="display: none;">
+            <h3>Admin Controls</h3>
+            <div class="toggle-container">
+              <label class="toggle-switch">
+                <input type="checkbox" id="encounter-toggle">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">Random Encounters</span>
             </div>
           </div>
         </div>
@@ -1171,15 +1182,46 @@
           }
         }
 
+        // Add after the gameState declaration
+        let isAdmin = false;
+
+        // Add this function after initSupabase
+        async function checkAdminStatus() {
+          try {
+            const { data, error } = await supabaseClient
+              .from('admin_users')
+              .select('id')
+              .eq('id', gameState.playerId)
+              .maybeSingle();
+
+            if (error) throw error;
+            
+            isAdmin = !!data;
+            
+            // Show/hide admin controls
+            const adminControls = document.getElementById('admin-controls');
+            if (adminControls) {
+              adminControls.style.display = isAdmin ? 'block' : 'none';
+            }
+          } catch (error) {
+            console.error('Error checking admin status:', error);
+          }
+        }
+
+        // Modify the checkEncounter function to respect the toggle
         function checkEncounter() {
-          const currentTerrain =
-            gameState.map[gameState.playerPos.y][gameState.playerPos.x];
+          // Get toggle state if admin, otherwise default to true
+          const encounterToggle = document.getElementById('encounter-toggle');
+          const encountersEnabled = !isAdmin || (encounterToggle && encounterToggle.checked);
+          
+          if (!encountersEnabled) return;
+
+          const currentTerrain = gameState.map[gameState.playerPos.y][gameState.playerPos.x];
           const terrainType = Object.keys(TERRAIN_TYPES).find(
             (type) => TERRAIN_TYPES[type].emoji === currentTerrain.emoji
           );
 
-          const encounterRate =
-            gameState.configs?.encounter_rates?.[terrainType] ?? 0.3;
+          const encounterRate = gameState.configs?.encounter_rates?.[terrainType] ?? 0.3;
 
           if (Math.random() < encounterRate) {
             gameState.inBattle = true;
@@ -1725,6 +1767,15 @@
             requestAnimationFrame(animatePlayer);
 
             hideLoadingScreen();
+
+            // Add this to the initGame function, after the player data is loaded
+            // Find this section in initGame:
+            if (!playerError && playerData) {
+              document.getElementById("player-username").textContent = playerData.username;
+              
+              // Add this line:
+              await checkAdminStatus();
+            }
           } catch (error) {
             console.error("Error initializing game:", error);
           }
