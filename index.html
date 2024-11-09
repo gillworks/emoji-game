@@ -1754,8 +1754,13 @@
             if (gameState.resourceChannel) {
               await gameState.resourceChannel.unsubscribe();
             }
-            await supabaseClient.channel("player_positions").unsubscribe();
-
+            if (gameState.playerSubscription) {
+              await gameState.playerSubscription.unsubscribe();
+            }
+            
+            // Unsubscribe from map changes
+            await supabaseClient.channel('map_changes').unsubscribe();
+            
             // Delete server_players entry
             const { error: serverPlayerError } = await supabaseClient
               .from("server_players")
@@ -2213,7 +2218,44 @@
               )
               .subscribe();
 
-            console.log('Subscriptions set up successfully');
+            // Add subscription for map terrain changes
+            supabaseClient
+              .channel('map_changes')
+              .on(
+                'postgres_changes',
+                {
+                  event: '*',
+                  schema: 'public',
+                  table: 'map_data',
+                  filter: `server_id=eq.${gameState.serverId}`
+                },
+                async (payload) => {
+                  if (payload.new) {
+                    const { x, y, terrain_type } = payload.new;
+                    
+                    // Get the terrain details
+                    const terrain = TERRAIN_TYPES[terrain_type];
+                    if (terrain) {
+                      // Update the local map data
+                      if (!gameState.map[y]) gameState.map[y] = [];
+                      gameState.map[y][x] = terrain;
+                      
+                      // Re-render the map
+                      renderMap();
+                      
+                      // Update tile info if player is on this tile
+                      if (gameState.playerPos && 
+                          gameState.playerPos.x === x && 
+                          gameState.playerPos.y === y) {
+                        updateTileInfo();
+                      }
+                    }
+                  }
+                }
+              )
+              .subscribe();
+
+            console.log('All subscriptions set up successfully');
           } catch (error) {
             console.error('Error setting up subscriptions:', error);
           }
