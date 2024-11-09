@@ -2448,7 +2448,6 @@
           checkForResources();
         }
 
-        // Update the checkForResources function with this version
         async function checkForResources() {
           try {
             // First check for resource spawns
@@ -2489,8 +2488,18 @@
               } else if (mapData?.metadata?.structure_id) {
                 // It's a structure
                 gameState.currentResource = null;
-                actionsDisplay.textContent = ""; // Structure emoji is shown in terrain
-                actionsLabel.textContent = 'E to interact';
+                
+                if (mapData.metadata.structure_id === 'STORAGE_CHEST') {
+                  // Use the terrain emoji from the current location display
+                  const terrainEmoji = document.getElementById("tile-terrain").textContent;
+                  actionsDisplay.textContent = terrainEmoji;
+                  // Show different message based on ownership
+                  actionsLabel.textContent = mapData.metadata.owner_id === gameState.playerId ? 
+                    'E to open' : 'Not your storage';
+                } else {
+                  actionsDisplay.textContent = ""; // Structure emoji is shown in terrain
+                  actionsLabel.textContent = 'E to interact';
+                }
               } else {
                 // Nothing to interact with
                 gameState.currentResource = null;
@@ -2503,7 +2512,7 @@
           }
         }
 
-        // Update the resource collection handler to clear UI first
+        // Update the collectResource function to check ownership before opening storage
         async function collectResource() {
           if (!gameState.playerPos) return;
 
@@ -2521,13 +2530,21 @@
 
             if (mapError) throw mapError;
 
+            // If this is a storage chest, verify ownership before opening
             if (mapData?.metadata?.structure_id === 'STORAGE_CHEST') {
-              // Pass the current coordinates to the storage menu
+              const ownerId = mapData.metadata.owner_id;
+              
+              if (ownerId !== gameState.playerId) {
+                showCollectionMessage("You don't own this storage chest");
+                return;
+              }
+              
+              // If we get here, the player owns the chest
               openStorageMenu(gameState.serverId, gameState.playerPos.x, gameState.playerPos.y);
               return;
             }
 
-            // Existing resource collection code...
+            // Rest of existing resource collection code...
             if (!gameState.currentResource) return;
 
             const { data, error } = await supabaseClient.rpc('collect_resource', {
