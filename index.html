@@ -4,7 +4,7 @@
     <title>Emoji Adventure</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
-    <link rel="stylesheet" href="styles.css?v=10" />
+    <link rel="stylesheet" href="styles.css?v=11" />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
@@ -411,6 +411,23 @@
         </div>
       </div>
 
+      <!-- Add this before </body> -->
+      <div id="build-modal" class="modal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Build Structure</h2>
+            <span class="close-button" onclick="closeBuildMenu()">&times;</span>
+          </div>
+          <div id="build-panel">
+            <div id="available-structures"></div>
+            <div id="structure-details"></div>
+            <button id="build-button" onclick="buildSelectedStructure()" style="display: none">
+              Build (B)
+            </button>
+          </div>
+        </div>
+      </div>
+
       <script>
         let TERRAIN_TYPES = {};
 
@@ -477,6 +494,11 @@
             isOpen: false,
             selectedRecipeIndex: -1,
             recipes: [],
+          },
+          building: {
+            isOpen: false,
+            selectedStructureIndex: -1,
+            structures: []
           },
         };
 
@@ -1382,7 +1404,41 @@
           if (!e || !e.key) return;
           const key = e.key.toLowerCase();
 
-          // Handle crafting menu controls first
+          // Handle build menu controls first
+          if (gameState.building.isOpen) {
+            switch (key) {
+              case "b":
+                if (gameState.building.selectedStructureIndex !== -1) {
+                  buildSelectedStructure();
+                }
+                e.preventDefault();
+                return;
+              case "escape":
+                closeBuildMenu();
+                e.preventDefault();
+                return;
+              case "arrowup":
+                e.preventDefault();
+                navigateStructures(-1);
+                return;
+              case "arrowdown":
+                e.preventDefault();
+                navigateStructures(1);
+                return;
+            }
+            // Prevent any other keys while build menu is open
+            e.preventDefault();
+            return;
+          }
+
+          // Add build menu toggle
+          if (key === "b" && !gameState.inBattle) {
+            openBuildMenu();
+            e.preventDefault();
+            return;
+          }
+
+          // Handle crafting menu controls
           if (gameState.crafting.isOpen) {
             switch (key) {
               case "c":
@@ -1496,6 +1552,14 @@
               return;
             }
 
+            await fetchGameConfigs();
+            await loadStructures(); // Add this line
+            
+            // Find or create server should be called before checking positions
+            const serverId = await findOrCreateServer();
+            gameState.serverId = serverId;
+            console.log("Server ID set:", gameState.serverId);
+
             // Add demo mode UI adjustments
             if (isDemoMode) {
               document.querySelector(
@@ -1539,13 +1603,6 @@
               document.getElementById("player-username").textContent =
                 playerData.username;
             }
-
-            await fetchGameConfigs();
-
-            // Find or create server should be called before checking positions
-            const serverId = await findOrCreateServer();
-            gameState.serverId = serverId;
-            console.log("Server ID set:", gameState.serverId);
 
             await loadMap(gameState.serverId);
             await setupPlayerSubscriptions();
@@ -1990,17 +2047,20 @@
 
         async function loadRecipes() {
           try {
-            const { data: recipes, error } = await supabaseClient.from(
-              "crafting_recipes"
-            ).select(`
+            const { data: recipes, error } = await supabaseClient
+              .from("crafting_recipes")
+              .select(`
                 id,
                 quantity_produced,
-                result_item_id (id, emoji, name),
+                is_structure,
+                structure_id,
+                result_item_id,
+                result_item:result_item_id (id, emoji, name),
                 crafting_ingredients (
                   quantity_required,
                   item_id (id, emoji, name)
                 )
-              `);
+              `).filter('is_structure', 'eq', false); // Only load non-structure recipes
 
             if (error) throw error;
 
@@ -2021,9 +2081,8 @@
                 recipeDiv.classList.add("selected");
                 showRecipeDetails(recipe);
               };
-              recipeDiv.innerHTML = `
-                ${recipe.result_item_id.emoji} ${recipe.result_item_id.name}
-              `;
+
+              recipeDiv.innerHTML = `${recipe.result_item.emoji} ${recipe.result_item.name}`;
               recipesContainer.appendChild(recipeDiv);
             });
           } catch (error) {
@@ -2047,7 +2106,7 @@
           detailsDiv.innerHTML = `
             <h4>Recipe Details:</h4>
             <div class="recipe-result">
-              Creates: ${recipe.quantity_produced}x ${recipe.result_item_id.emoji} ${recipe.result_item_id.name}
+              Creates: ${recipe.quantity_produced}x ${recipe.result_item.emoji} ${recipe.result_item.name}
             </div>
             <div class="recipe-ingredients">
               Requires:<br>
@@ -2279,26 +2338,224 @@
           }
         }
 
-      function closeCraftingMenu() {
-        gameState.crafting.isOpen = false;
-        gameState.crafting.selectedRecipeIndex = -1;
-        const modal = document.getElementById("crafting-modal");
-        modal.classList.remove("active");
-        document.getElementById("craft-button").style.display = "none";
-        document.getElementById("recipe-details").innerHTML = ""; 
-        document
-          .querySelectorAll(".recipe-item")
-          .forEach((item) => item.classList.remove("selected"));
-      }
+        // Add new function to load available structures
+        async function loadStructures() {
+          try {
+            // First get all structures
+            const { data: structures, error: structuresError } = await supabaseClient
+              .from("structures")
+              .select(`
+                id,
+                emoji,
+                name,
+                description,
+                allowed_terrain
+              `);
 
-      // Add click outside to close
-      document
-        .getElementById("crafting-modal")
-        .addEventListener("click", (e) => {
-          if (e.target.id === "crafting-modal") {
-            closeCraftingMenu();
+            if (structuresError) throw structuresError;
+
+            // Then get their recipes
+            const { data: recipes, error: recipesError } = await supabaseClient
+              .from("crafting_recipes")
+              .select(`
+                id,
+                structure_id,
+                crafting_ingredients (
+                  quantity_required,
+                  item_id (id, emoji, name)
+                )
+              `)
+              .filter('is_structure', 'eq', true);
+
+            if (recipesError) throw recipesError;
+
+            // Combine the data
+            const structuresWithRecipes = structures.map(structure => {
+              const recipe = recipes.find(r => r.structure_id === structure.id);
+              return {
+                ...structure,
+                recipe: recipe
+              };
+            });
+
+            gameState.building.structures = structuresWithRecipes;
+          } catch (error) {
+            console.error("Error loading structures:", error);
           }
-        });
+        }
+
+        // Add build menu HTML after crafting modal
+        `<div id="build-modal" class="modal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h2>Build Structure</h2>
+              <span class="close-button" onclick="closeBuildMenu()">&times;</span>
+            </div>
+            <div id="build-panel">
+              <div id="available-structures"></div>
+              <div id="structure-details"></div>
+              <button id="build-button" onclick="buildSelectedStructure()" style="display: none">
+                Build (B)
+              </button>
+            </div>
+          </div>
+        </div>`
+
+        // Add build menu functions
+        function openBuildMenu() {
+          gameState.building.isOpen = true;
+          const modal = document.getElementById("build-modal");
+          modal.classList.add("active");
+          updateAvailableStructures();
+
+          // Select first structure by default
+          if (gameState.building.structures.length > 0) {
+            gameState.building.selectedStructureIndex = 0;
+            const firstStructure = document.querySelector(".structure-item");
+            if (firstStructure) {
+              firstStructure.classList.add("selected");
+              showStructureDetails(gameState.building.structures[0]);
+            }
+          }
+        }
+
+        function closeBuildMenu() {
+          gameState.building.isOpen = false;
+          gameState.building.selectedStructureIndex = -1;
+          const modal = document.getElementById("build-modal");
+          modal.classList.remove("active");
+          document.getElementById("build-button").style.display = "none";
+          document.getElementById("structure-details").innerHTML = "";
+          document.querySelectorAll(".structure-item").forEach(item => item.classList.remove("selected"));
+        }
+
+        function updateAvailableStructures() {
+          const structuresContainer = document.getElementById("available-structures");
+          structuresContainer.innerHTML = "<h4>Available Structures:</h4>";
+
+          gameState.building.structures.forEach((structure, index) => {
+            const structureDiv = document.createElement("div");
+            structureDiv.className = "structure-item";
+            structureDiv.onclick = () => {
+              gameState.building.selectedStructureIndex = index;
+              document.querySelectorAll(".structure-item").forEach(item => item.classList.remove("selected"));
+              structureDiv.classList.add("selected");
+              showStructureDetails(structure);
+            };
+            structureDiv.innerHTML = `${structure.emoji} ${structure.name}`;
+            structuresContainer.appendChild(structureDiv);
+          });
+        }
+
+        function showStructureDetails(structure) {
+          const detailsDiv = document.getElementById("structure-details");
+          
+          if (!structure.recipe || !structure.recipe.crafting_ingredients) {
+            detailsDiv.innerHTML = `
+              <h4>Structure Details:</h4>
+              <div class="structure-description">
+                ${structure.description || ""}
+              </div>
+              <div class="structure-requirements">
+                No recipe found
+              </div>
+            `;
+            return;
+          }
+
+          let requirementsList = structure.recipe.crafting_ingredients
+            .map(ing => `${ing.quantity_required}x ${ing.item_id.emoji} ${ing.item_id.name}`)
+            .join("<br>");
+
+          detailsDiv.innerHTML = `
+            <h4>Structure Details:</h4>
+            <div class="structure-description">
+              ${structure.description || ""}
+            </div>
+            <div class="structure-requirements">
+              Requires:<br>
+              ${requirementsList}<br>
+              Can be built on: ${TERRAIN_TYPES[structure.allowed_terrain].emoji}
+            </div>
+          `;
+
+          document.getElementById("build-button").style.display = "block";
+        }
+
+        async function buildSelectedStructure() {
+          if (gameState.building.selectedStructureIndex === -1) return;
+
+          const structure = gameState.building.structures[gameState.building.selectedStructureIndex];
+          if (!structure.recipe) {
+            showCollectionMessage("No recipe found for this structure");
+            return;
+          }
+
+          try {
+            // Log the parameters we're sending
+            console.log("Building structure with params:", {
+              p_player_id: gameState.playerId,
+              p_recipe_id: structure.recipe.id,
+              p_x: gameState.playerPos.x,
+              p_y: gameState.playerPos.y,
+              p_server_id: gameState.serverId
+            });
+
+            const { data, error } = await supabaseClient.rpc("handle_crafting", {
+              p_player_id: gameState.playerId,
+              p_recipe_id: structure.recipe.id, // This was the issue - we need to use the recipe ID
+              p_x: gameState.playerPos.x,
+              p_y: gameState.playerPos.y,
+              p_server_id: gameState.serverId
+            });
+
+            if (error) {
+              console.error("Building error:", error);
+              throw error;
+            }
+
+            console.log("Building response:", data);
+
+            if (data.success) {
+              showCollectionMessage(data.message);
+              closeBuildMenu();
+              renderMap();
+            } else {
+              showCollectionMessage(data.message);
+            }
+          } catch (error) {
+            console.error("Error building structure:", error);
+            showCollectionMessage("Error building structure");
+          }
+        }
+
+        // Add structure navigation
+        function navigateStructures(direction) {
+          const structures = gameState.building.structures;
+          if (structures.length === 0) return;
+
+          let newIndex = gameState.building.selectedStructureIndex + direction;
+          if (newIndex >= structures.length) newIndex = 0;
+          if (newIndex < 0) newIndex = structures.length - 1;
+
+          gameState.building.selectedStructureIndex = newIndex;
+
+          document.querySelectorAll(".structure-item").forEach((item, index) => {
+            item.classList.toggle("selected", index === newIndex);
+          });
+
+          showStructureDetails(structures[newIndex]);
+        }
+
+        function closeCraftingMenu() {
+          gameState.crafting.isOpen = false;
+          gameState.crafting.selectedRecipeIndex = -1;
+          const modal = document.getElementById("crafting-modal");
+          modal.classList.remove("active");
+          document.getElementById("craft-button").style.display = "none";
+          document.getElementById("recipe-details").innerHTML = "";
+          document.querySelectorAll(".recipe-item").forEach(item => item.classList.remove("selected"));
+        }
     </script>
   </body>
 </html>

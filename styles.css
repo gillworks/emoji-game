@@ -658,3 +658,64 @@ body {
   flex: 1;
   min-height: 0;
 }
+
+.structure-item {
+  padding: 8px;
+  margin: 4px 0;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  cursor: pointer;
+  position: relative;
+  padding-left: 24px;
+}
+
+.structure-item:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.structure-item.selected {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.structure-item.selected::before {
+  content: "▶";
+  position: absolute;
+  left: 8px;
+  color: #4caf50;
+}
+
+.structure-description {
+  margin-bottom: 8px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.structure-requirements {
+  padding: 4px;
+  background: rgba(76, 175, 80, 0.2);
+  border-radius: 4px;
+}
+
+#build-button {
+  margin-top: 12px;
+  padding: 8px 16px;
+  background: #4caf50;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#build-button:hover {
+  background: #45a049;
+}
+
+#build-button::after {
+  content: "(B)";
+  font-size: 12px;
+  margin-left: 8px;
+  opacity: 0.7;
+}

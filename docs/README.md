@@ -1,6 +1,6 @@
 # Emoji Adventure Documentation
 
-A real-time multiplayer browser game where players explore a procedurally generated emoji world, battle creatures, and interact with other players.
+A real-time multiplayer browser game where players explore a procedurally generated emoji world, battle creatures, gather resources, craft items, and build structures.
 
 ## Game Features
 
@@ -84,6 +84,19 @@ A real-time multiplayer browser game where players explore a procedurally genera
 - Health and score tracking
 - Victory/defeat animations
 
+### Building System
+
+- Press 'B' to open building menu
+- Multiple structure types:
+  - 🏠 House: A cozy shelter
+  - 🌾 Farm: Grows food
+  - 🏭 Workshop: Crafting station
+- Terrain-specific building requirements
+- Resource costs for each structure
+- Real-time structure placement
+- Structure ownership tracking
+- Safe zones (no encounters in structures)
+
 ### Technical Features
 
 - Real-time database with Supabase
@@ -154,6 +167,13 @@ For detailed database information, see [Database Schema](database/schema.md)
   - 🐵 Monkey
   - 🐨 Koala
   - 🐷 Pig
+
+### Building
+
+- B: Open/close building menu
+- ↑/↓: Navigate structures
+- B: Build selected structure
+- ESC: Close building menu
 
 ## Technical Requirements
 

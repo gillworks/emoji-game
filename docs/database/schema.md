@@ -43,7 +43,7 @@ Defines the different types of terrain and their associated encounters
 |--------|------|-------------|
 | id | text | Primary key |
 | emoji | text | Emoji representation of terrain |
-| encounter | text | Emoji representation of encounter |
+| encounter | text | Encounter emoji (null for safe zones) |
 | color | text | Background color in rgba format |
 
 Example terrain types:
@@ -95,6 +95,7 @@ Stores the terrain type for each coordinate on each server's map
 | y | integer | Y coordinate |
 | terrain_type | text | Current type of terrain at this location |
 | original_terrain_type | text | Original type of terrain (for map resets) |
+| metadata | jsonb | Structure metadata (owner_id, built_at, etc.) |
 
 ### server_players
 
@@ -151,6 +152,8 @@ Defines recipes for creating items
 |--------|------|-------------|
 | id | uuid | Primary key |
 | result_item_id | text | Foreign key to items.id |
+| structure_id | text | Foreign key to structures.id |
+| is_structure | boolean | Whether this recipe builds a structure |
 | quantity_produced | integer | Amount crafted (default: 1) |
 | created_at | timestamp | When recipe was added |
 
@@ -164,6 +167,19 @@ Stores ingredients needed for recipes
 | item_id | text | Foreign key to items.id |
 | quantity_required | integer | Amount needed (default: 1) |
 | created_at | timestamp | When ingredient was added |
+
+### structures
+
+Defines buildable structures in the game
+| Column | Type | Description |
+|--------|------|-------------|
+| id | text | Primary key |
+| emoji | text | Visual representation |
+| name | text | Display name |
+| description | text | Structure description |
+| terrain_type | text | What terrain type it becomes when built |
+| allowed_terrain | text | What terrain type it can be built on |
+| created_at | timestamp | When the structure was added |
 
 ## Row Level Security (RLS)
 
@@ -252,14 +268,53 @@ Handles item usage on terrain:
 - Tracks hits for transformation
 - Returns success/failure message
 
-### handle_crafting(player_id UUID, recipe_id UUID)
+### handle_crafting(p_player_id UUID, p_recipe_id UUID, p_x INTEGER DEFAULT NULL, p_y INTEGER DEFAULT NULL, p_server_id UUID DEFAULT NULL)
 
-Handles item crafting:
+Handles both item crafting and structure building:
 
-- Verifies player has required ingredients
-- Removes ingredients from inventory
-- Adds crafted item to inventory
-- Returns success/failure message
+- For regular crafting (when p_x, p_y, p_server_id are NULL):
+
+  - Verifies player has required ingredients
+  - Removes ingredients from inventory
+  - Adds crafted item to inventory
+  - Returns success/failure message
+
+- For structure building (when all parameters provided):
+  - Validates building location and terrain type
+  - Verifies player has required ingredients
+  - Removes ingredients from inventory
+  - Updates map terrain and adds structure metadata
+  - Returns success/failure message
+
+Parameters:
+
+- p_player_id: Player performing the action
+- p_recipe_id: Recipe being used
+- p_x: X coordinate for structure placement (optional)
+- p_y: Y coordinate for structure placement (optional)
+- p_server_id: Server ID for structure placement (optional)
+
+Returns JSON with:
+
+- success: boolean indicating if action succeeded
+- message: Status or error message
+
+### map_data (Updated)
+
+Now includes structure metadata
+| Column | Type | Description |
+|--------|------|-------------|
+| metadata | jsonb | Structure metadata including: |
+| | | - owner_id: UUID of structure builder |
+| | | - built_at: Timestamp of construction |
+| | | - structure_id: ID of structure type |
+
+### terrain_types (Updated)
+
+Now supports safe zones
+| Column | Type | Description |
+|--------|------|-------------|
+| encounter | text | Emoji for encounters (null for safe zones like structures) |
 
 ## Indexes
 
