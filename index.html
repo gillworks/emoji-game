@@ -4,7 +4,7 @@
     <title>Emoji Adventure</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
-    <link rel="stylesheet" href="styles.css?v=14" />
+    <link rel="stylesheet" href="styles.css?v=15" />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
@@ -264,9 +264,6 @@
         </div>
         <div class="status-right">
           <div>
-            x,y: (<span id="position-x">-</span>,<span id="position-y">-</span>)
-          </div>
-          <div>
             <span
               id="player-emoji"
               style="cursor: pointer"
@@ -291,6 +288,9 @@
           <div class="sidebar-section">
             <h3>Current Location</h3>
             <div id="tile-info-panel">
+              <div class="coordinates" title="Your current position on the map">
+                x,y: (<span id="position-x">-</span>,<span id="position-y">-</span>)
+              </div>
               <div class="hotbar-slot" data-slot="terrain">
                 <div class="slot-content" id="tile-terrain"></div>
                 <div class="slot-label">Terrain</div>

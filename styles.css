@@ -454,6 +454,8 @@ body {
   gap: 8px;
   margin: 0;
   width: 100%;
+  padding: 4px;
+  box-sizing: border-box;
 }
 
 #tile-info-panel .hotbar-slot {
@@ -802,4 +804,19 @@ input:checked + .toggle-slider:before {
 .hotbar-slot.move-source .slot-content {
   transform: scale(1.1);
   transition: transform 0.2s;
+}
+
+.coordinates {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 8px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  text-align: center;
+  color: #9b9b9b;
+  font-size: 14px;
+}
+
+.coordinates span {
+  color: #ffffff;
+  font-weight: bold;
 }
