@@ -128,6 +128,13 @@ For detailed database information, see [Database Schema](database/schema.md)
 - 2: Heavy Attack
 - 3: Block
 
+### Crafting
+
+- C: Open/close crafting menu
+- ↑/↓: Navigate recipes
+- C: Craft selected recipe
+- ESC: Close crafting menu
+
 ### Map Navigation
 
 - Click and drag to pan the map
