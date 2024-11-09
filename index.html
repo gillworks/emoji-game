@@ -31,22 +31,18 @@
         getEnvVariable("NEXT_PUBLIC_SUPABASE_ANON_KEY")
       );
 
-      // Add this function near the top of the script section
       function getUrlParameter(name) {
         const urlParams = new URLSearchParams(window.location.search);
         return urlParams.get(name);
       }
 
-      // Add this variable after gameState declaration
       let isDemoMode = getUrlParameter("mode") === "demo";
 
-      // Add this to your gameState object
       gameState.inventory = {
         items: {},
         stacks: {},
       };
 
-      // Add this function after the other event listeners
       function handleHotbarSelection(e) {
         // Handle both number row keys and numpad keys
         const key = e.key;
@@ -75,16 +71,13 @@
         }
       }
 
-      // Add this to your event listeners (after the keydown listener for movement)
       document.addEventListener("keydown", handleHotbarSelection);
 
-      // Add this to your initGame function, before hideLoadingScreen()
       // Select the first slot by default
       document
         .querySelector('.hotbar-slot[data-slot="1"]')
         .classList.add("selected");
 
-      // Add this function after the handleHotbarSelection function
       function updateHotbarDisplay() {
         // Update each slot with its item
         for (let slot = 1; slot <= 10; slot++) {
@@ -106,10 +99,8 @@
         }
       }
 
-      // Add this line to your initGame function, right after selecting the first slot
       updateHotbarDisplay();
 
-      // Add this new function to handle tree chopping
       async function chopTree() {
         if (!gameState.playerPos || gameState.inBattle) return;
 
@@ -238,7 +229,6 @@
         });
       });
 
-      // Add this new function after the handleHotbarSelection function
       function handleEmojiSelect(emoji) {
         // Update the player's emoji in the database
         supabaseClient
@@ -261,7 +251,6 @@
         document.getElementById("emoji-selector").style.display = "none";
       }
 
-      // Add this function to toggle the emoji selector
       function toggleEmojiSelector() {
         const selector = document.getElementById("emoji-selector");
         selector.style.display =
@@ -269,8 +258,6 @@
       }
 
       // Modify the HTML for the player username section to include the emoji selector
-
-      // Add this function after handleEmojiSelect
       async function loadEmojiChoices() {
         try {
           const { data: emojiChoices, error } = await supabaseClient
@@ -1120,8 +1107,8 @@
             ctx.fillStyle = terrain.color;
             ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
 
-            // Draw terrain emoji
-            ctx.font = `${cellSize * 0.8}px Arial`;
+            // Draw terrain emoji with larger size
+            ctx.font = `${cellSize * 0.9}px Arial`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillStyle = "white";
@@ -1133,24 +1120,24 @@
           }
         }
 
-        // Draw other players
-        ctx.font = `${cellSize * 0.8}px Arial`;
+        // Draw other players with larger size
+        ctx.font = `${cellSize * 0.9}px Arial`;
         gameState.otherPlayers.forEach((pos) => {
           ctx.fillText(
-            pos.emoji || "🦊", // Use other player's emoji if available
+            pos.emoji || "🦊",
             pos.x * cellSize + cellSize / 2,
             pos.y * cellSize + cellSize / 2
           );
         });
 
-        // Draw main player - Update this part to use gameState.playerEmoji
+        // Draw main player with larger size
         if (gameState.playerPos) {
-          ctx.font = `${cellSize * 0.8}px Arial`;
+          ctx.font = `${cellSize * 0.9}px Arial`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillStyle = "white";
           ctx.fillText(
-            gameState.playerEmoji || "🐻", // Use player's chosen emoji
+            gameState.playerEmoji || "🐻",
             gameState.playerPos.x * cellSize + cellSize / 2,
             gameState.playerPos.y * cellSize +
               cellSize / 2 +
@@ -1609,7 +1596,6 @@
           await loadMap(gameState.serverId);
           await setupPlayerSubscriptions();
 
-          // Debug log before position check
           console.log(
             "Checking position for player:",
             gameState.playerId,
@@ -1617,7 +1603,6 @@
             gameState.serverId
           );
 
-          // Add this before the position query
           console.log("About to check position with params:", {
             playerId: gameState.playerId,
             serverId: gameState.serverId,
@@ -1921,7 +1906,7 @@
       const LOADING_MESSAGES = [
         { emoji: "🌳", message: "Growing the forest..." },
         { emoji: "🏔️", message: "Moving mountains..." },
-        { emoji: "", message: "Planting the plains..." },
+        { emoji: "🌱", message: "Planting the plains..." },
         { emoji: "🌊", message: "Filling the oceans..." },
         { emoji: "🦊", message: "Gathering the players..." },
         { emoji: "🐻", message: "Preparing your character..." },
@@ -1985,7 +1970,6 @@
         }
       });
 
-      // Add this new function for the animation
       function animatePlayer() {
         // Create a smooth bounce using sine wave
         gameState.playerAnimation.bounceOffset =
@@ -2051,7 +2035,6 @@
         });
       });
 
-      // Add this new function to load inventory from database
       async function loadInventory() {
         try {
           const { data, error } = await supabaseClient
@@ -2086,7 +2069,6 @@
         }
       }
 
-      // Add this function to handle player subscriptions
       async function setupPlayerSubscriptions() {
         // Unsubscribe from any existing subscriptions
         if (gameState.playerSubscription) {
@@ -2155,7 +2137,7 @@
                 y < gameState.mapHeight &&
                 TERRAIN_TYPES[terrain_type]
               ) {
-                console.log(`Updating map at ${x},${y} to ${terrain_type}`); // Debug log
+                console.log(`Updating map at ${x},${y} to ${terrain_type}`);
                 gameState.map[y][x] = TERRAIN_TYPES[terrain_type];
                 renderMap();
               }
@@ -2166,7 +2148,6 @@
           });
       }
 
-      // Add this function after the renderMap function
       function updateTileInfo() {
         if (!gameState.playerPos) {
           console.log("updateTileInfo: No player position");
@@ -2180,13 +2161,13 @@
 
         const currentTile =
           gameState.map[gameState.playerPos.y][gameState.playerPos.x];
-        console.log("updateTileInfo: Current tile:", currentTile); // Debug log
+        console.log("updateTileInfo: Current tile:", currentTile);
 
         // Update terrain
         const terrainDisplay = document.getElementById("tile-terrain");
         if (terrainDisplay) {
           terrainDisplay.textContent = currentTile.emoji;
-          console.log("updateTileInfo: Set terrain to:", currentTile.emoji); // Debug log
+          console.log("updateTileInfo: Set terrain to:", currentTile.emoji);
         }
 
         // Update resources
@@ -2197,7 +2178,7 @@
           resources = "🪵";
           console.log(
             "updateTileInfo: Forest tile detected, showing wood resource"
-          ); // Debug log
+          );
         }
         if (resourcesDisplay) {
           resourcesDisplay.textContent = resources;
@@ -2214,21 +2195,13 @@
           actions = "🪓";
           console.log(
             "updateTileInfo: Forest tile with axe selected, showing chop action"
-          ); // Debug log
+          );
         }
         if (actionsDisplay) {
           actionsDisplay.textContent = actions;
         }
       }
 
-      // Add this line to the end of the movement handler in the keydown event listener
-      // (right after checkEncounter())
-      updateTileInfo();
-
-      // Also add it to the end of initGame() before hideLoadingScreen()
-      updateTileInfo();
-
-      // Add it to chopTree() after renderMap()
       updateTileInfo();
     </script>
   </body>
