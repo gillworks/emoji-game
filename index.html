@@ -1385,7 +1385,29 @@
           if (!e || !e.key) return;
           const key = e.key.toLowerCase();
 
-          // Handle build menu controls first
+          // Handle battle controls first if in battle
+          if (gameState.inBattle) {
+            switch (key) {
+              case "f":
+                chooseBattle('fight');
+                return;
+              case "r":
+                chooseBattle('run');
+                return;
+              case "1":
+                chooseAttack('quick');
+                return;
+              case "2":
+                chooseAttack('heavy');
+                return;
+              case "3":
+                chooseAttack('block');
+                return;
+            }
+            return; // Don't process other keys during battle
+          }
+
+          // Handle build menu controls
           if (gameState.building.isOpen) {
             switch (key) {
               case "b":
@@ -1407,16 +1429,7 @@
                 navigateStructures(1);
                 return;
             }
-            // Prevent any other keys while build menu is open
-            e.preventDefault();
-            return;
-          }
-
-          // Add build menu toggle
-          if (key === "b" && !gameState.inBattle) {
-            openBuildMenu();
-            e.preventDefault();
-            return;
+            return; // Don't process other keys while build menu is open
           }
 
           // Handle crafting menu controls
@@ -1441,36 +1454,44 @@
                 navigateRecipes(1);
                 return;
             }
-            // Prevent any other keys while crafting is open
+            return; // Don't process other keys while crafting is open
+          }
+
+          // Handle menu toggles
+          if (key === "b") {
+            openBuildMenu();
             e.preventDefault();
             return;
           }
 
-          // Handle battle controls
-          if (gameState.inBattle) {
-            // ... existing battle controls ...
-            return;
-          }
-
-          // Handle hotbar selection
-          if (key >= "0" && key <= "9") {
-            // ... existing hotbar selection code ...
-            return;
-          }
-
-          // Handle crafting menu toggle
-          if (key === "c" && !gameState.inBattle) {
+          if (key === "c") {
             openCraftingMenu();
             e.preventDefault();
             return;
           }
 
-          // Only process movement if player position exists and no modal is open
+          // Handle hotbar selection (1-9, 0)
+          if (key >= "0" && key <= "9") {
+            const slotNumber = key === "0" ? 10 : parseInt(key);
+            document.querySelectorAll(".hotbar-slot").forEach((slot) => {
+              slot.classList.remove("selected");
+            });
+            const selectedSlot = document.querySelector(
+              `.hotbar-slot[data-slot="${slotNumber}"]`
+            );
+            if (selectedSlot) {
+              selectedSlot.classList.add("selected");
+              gameState.inventory.selectedSlot = slotNumber;
+              useItem();
+            }
+            return;
+          }
+
+          // Only process movement if player position exists
           if (!gameState.playerPos) return;
 
           // Movement controls
           const newPos = { ...gameState.playerPos };
-
           switch (key) {
             case "w":
             case "arrowup":
@@ -1492,9 +1513,8 @@
               return;
           }
 
+          // Update position in game state and database
           gameState.playerPos = newPos;
-
-          // Update position in Supabase
           try {
             const { error } = await supabaseClient
               .from("player_positions")
@@ -1505,10 +1525,7 @@
                 y: newPos.y,
               });
 
-            if (error) {
-              console.error("Position update error:", error);
-              throw error;
-            }
+            if (error) throw error;
           } catch (error) {
             console.error("Error updating position:", error);
           }
