@@ -4,7 +4,7 @@
     <title>Emoji Adventure</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
-    <link rel="stylesheet" href="styles.css?v=15" />
+    <link rel="stylesheet" href="styles.css?v=25" />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
@@ -448,6 +448,37 @@
             <button id="build-button" onclick="buildSelectedStructure()" style="display: none">
               Build (B)
             </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Update the storage modal HTML -->
+      <div id="storage-modal" class="modal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Storage Chest</h2>
+            <span class="close-button" onclick="closeStorageMenu()">&times;</span>
+          </div>
+          <div id="storage-panel">
+            <div class="inventory-container">
+              <div class="inventory-section">
+                <h3>Storage</h3>
+                <div class="storage-grid">
+                  <!-- Storage slots will be generated dynamically -->
+                </div>
+              </div>
+              <div class="inventory-section">
+                <h3>Your Inventory</h3>
+                <div class="player-inventory-grid">
+                  <!-- Player inventory slots will be generated here -->
+                </div>
+              </div>
+            </div>
+            <div class="storage-controls">
+              <button id="transfer-button" onclick="executeStorageAction()" disabled>
+                Transfer Item (X)
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1438,9 +1469,24 @@
           gameMap.style.cursor = "grab";
         });
 
+        // Add this near the top of the file with other gameState initialization
+        let selectedStorageSlot = null;
+
+        // Update the keyboard event handler to check for open modals
         document.addEventListener("keydown", async (e) => {
           if (!e || !e.key) return;
           const key = e.key.toLowerCase();
+
+          // Don't process movement if any modal is open
+          if (document.querySelector('.modal.active')) {
+            // Still handle ESC key for closing modals
+            if (key === 'escape') {
+              if (gameState.crafting.isOpen) closeCraftingMenu();
+              if (gameState.building.isOpen) closeBuildMenu();
+              closeStorageMenu();
+            }
+            return;
+          }
 
           // Handle battle controls first if in battle
           if (gameState.inBattle) {
@@ -2445,9 +2491,31 @@
 
         // Update the resource collection handler to clear UI first
         async function collectResource() {
-          if (!gameState.currentResource) return;
+          if (!gameState.playerPos) return;
 
           try {
+            // Check if there's a structure at the current position
+            const { data: mapData, error: mapError } = await supabaseClient
+              .from('map_data')
+              .select('metadata')
+              .match({
+                server_id: gameState.serverId,
+                x: gameState.playerPos.x,
+                y: gameState.playerPos.y
+              })
+              .single();
+
+            if (mapError) throw mapError;
+
+            if (mapData?.metadata?.structure_id === 'STORAGE_CHEST') {
+              // Pass the current coordinates to the storage menu
+              openStorageMenu(gameState.serverId, gameState.playerPos.x, gameState.playerPos.y);
+              return;
+            }
+
+            // Existing resource collection code...
+            if (!gameState.currentResource) return;
+
             const { data, error } = await supabaseClient.rpc('collect_resource', {
               p_player_id: gameState.playerId,
               p_server_id: gameState.serverId,
@@ -2786,6 +2854,430 @@
             }
           });
         });
+
+        let currentStorage = {
+          serverId: null,
+          x: null,
+          y: null
+        };
+
+        // Update the openStorageMenu function to select the first slot by default
+        function openStorageMenu(serverId, x, y) {
+          currentStorage = { serverId, x, y };
+          const modal = document.getElementById("storage-modal");
+          modal.classList.add("active");
+          loadStorageContents().then(() => {
+            // Select first slot by default after contents are loaded
+            selectStorageSlot(1);
+          });
+        }
+
+        function closeStorageMenu() {
+          currentStorage = { serverId: null, x: null, y: null };
+          selectedStorageSlot = null;
+          const modal = document.getElementById("storage-modal");
+          modal.classList.remove("active");
+        }
+
+        // Update loadStorageContents to handle clicks
+        async function loadStorageContents() {
+          try {
+            // Load storage contents
+            const { data: contents, error } = await supabaseClient
+              .from('storage_inventories')
+              .select(`
+                slot,
+                quantity,
+                items:item_id (
+                  id,
+                  emoji,
+                  name
+                )
+              `)
+              .match({
+                server_id: currentStorage.serverId,
+                x: currentStorage.x,
+                y: currentStorage.y
+              });
+
+            if (error) throw error;
+
+            // Generate storage slots
+            const storageGrid = document.querySelector('.storage-grid');
+            storageGrid.innerHTML = '';
+
+            // Create 20 storage slots
+            for (let i = 1; i <= 20; i++) {
+              const slot = document.createElement('div');
+              slot.className = 'storage-slot';
+              slot.dataset.slot = i;
+
+              const content = contents.find(item => item.slot === i);
+              if (content) {
+                slot.innerHTML = `
+                  <div class="slot-content" data-stack="${content.quantity}">
+                    ${content.items.emoji}
+                  </div>
+                `;
+              }
+
+              // Update click handler to move cursor
+              slot.onclick = () => {
+                cursorPosition.section = 'storage';
+                cursorPosition.slot = i;
+                updateCursorVisuals();
+                updateTransferButton();
+              };
+              storageGrid.appendChild(slot);
+            }
+
+            // Generate player inventory slots
+            const inventoryGrid = document.querySelector('.player-inventory-grid');
+            inventoryGrid.innerHTML = '';
+
+            // Create 10 inventory slots
+            for (let i = 1; i <= 10; i++) {
+              const slot = document.createElement('div');
+              slot.className = 'storage-slot inventory-slot';
+              slot.dataset.slot = i;
+
+              // Add item if exists in player's inventory
+              if (gameState.inventory.items[i]) {
+                slot.innerHTML = `
+                  <div class="slot-content" data-stack="${gameState.inventory.stacks[i] || ''}">
+                    ${gameState.inventory.items[i]}
+                  </div>
+                `;
+              }
+
+              // Add slot number indicator
+              const slotNumber = document.createElement('div');
+              slotNumber.className = 'hotkey';
+              slotNumber.textContent = i === 10 ? '0' : i;
+              slot.appendChild(slotNumber);
+
+              // Update click handler to move cursor
+              slot.onclick = () => {
+                cursorPosition.section = 'inventory';
+                cursorPosition.slot = i;
+                updateCursorVisuals();
+                updateTransferButton();
+              };
+              inventoryGrid.appendChild(slot);
+            }
+
+            // Update cursor visuals
+            updateCursorVisuals();
+            updateTransferButton();
+          } catch (error) {
+            console.error('Error loading storage contents:', error);
+            showCollectionMessage('Error loading storage contents');
+          }
+        }
+
+        function selectStorageSlot(slot) {
+          document.querySelectorAll('.storage-slot').forEach(s => {
+            s.classList.remove('selected');
+          });
+          
+          if (selectedStorageSlot === slot) {
+            selectedStorageSlot = null;
+          } else {
+            selectedStorageSlot = slot;
+            document.querySelector(`.storage-slot[data-slot="${slot}"]`).classList.add('selected');
+          }
+        }
+
+        // Add function to select inventory slot
+        function selectInventorySlot(slot) {
+          document.querySelectorAll('.inventory-slot').forEach(s => {
+            s.classList.remove('selected');
+          });
+          
+          if (gameState.inventory.selectedSlot === slot) {
+            gameState.inventory.selectedSlot = null;
+          } else {
+            gameState.inventory.selectedSlot = slot;
+            document.querySelector(`.inventory-slot[data-slot="${slot}"]`).classList.add('selected');
+          }
+        }
+
+        // Update handleStorageAction to properly check selected slots
+        async function handleStorageAction(action) {
+          if (!selectedStorageSlot) {
+            showCollectionMessage('Select a storage slot');
+            return;
+          }
+          
+          if (!gameState.inventory.selectedSlot) {
+            showCollectionMessage('Select an inventory slot');
+            return;
+          }
+
+          try {
+            const { data, error } = await supabaseClient.rpc('handle_storage_action', {
+              p_player_id: gameState.playerId,
+              p_server_id: currentStorage.serverId,
+              p_x: currentStorage.x,
+              p_y: currentStorage.y,
+              p_action: action,
+              p_storage_slot: selectedStorageSlot,
+              p_inventory_slot: gameState.inventory.selectedSlot
+            });
+
+            if (error) throw error;
+
+            if (data.success) {
+              showCollectionMessage(data.message);
+              
+              // Update local gameState for immediate UI feedback
+              if (action === 'DEPOSIT') {
+                delete gameState.inventory.items[gameState.inventory.selectedSlot];
+                delete gameState.inventory.stacks[gameState.inventory.selectedSlot];
+              }
+
+              // First update the main inventory
+              await loadInventory();
+
+              // Then update the storage modal display
+              await loadStorageContents();
+
+              // Clear selections after successful action
+              selectedStorageSlot = null;
+              gameState.inventory.selectedSlot = null;
+              
+              // Update selection visuals
+              document.querySelectorAll('.storage-slot, .inventory-slot').forEach(slot => {
+                slot.classList.remove('selected');
+              });
+
+              // Update cursor visuals
+              updateCursorVisuals();
+            } else {
+              showCollectionMessage(data.message);
+            }
+          } catch (error) {
+            console.error('Error handling storage action:', error);
+            showCollectionMessage('Error performing storage action');
+          }
+        }
+
+        // Add keyboard shortcuts for storage actions
+        document.addEventListener("keydown", (e) => {
+          if (!document.getElementById("storage-modal").classList.contains("active")) return;
+          
+          const key = e.key.toLowerCase();
+          switch (key) {
+            case "d":
+              handleStorageAction("DEPOSIT");
+              break;
+            case "w":
+              handleStorageAction("WITHDRAW");
+              break;
+            case "escape":
+              closeStorageMenu();
+              break;
+            case "arrowleft":
+              e.preventDefault();
+              moveCursor('left');
+              break;
+            case "arrowright":
+              e.preventDefault();
+              moveCursor('right');
+              break;
+            case "arrowup":
+              e.preventDefault();
+              moveCursor('up');
+              break;
+            case "arrowdown":
+              e.preventDefault();
+              moveCursor('down');
+              break;
+            case "tab":
+              e.preventDefault();
+              moveCursor('tab');
+              break;
+            case "enter":
+            case " ": // Space bar
+              e.preventDefault();
+              selectSlotUnderCursor();
+              break;
+            case "x":
+              e.preventDefault();
+              executeStorageAction();
+              break;
+          }
+        });
+
+        // Add these variables near the top with other state variables
+        let cursorPosition = {
+          section: 'storage', // 'storage' or 'inventory'
+          slot: 1,
+          lastStorageSlot: 1,
+          lastInventorySlot: 1
+        };
+
+        // Add this function to handle cursor movement
+        function moveCursor(direction) {
+          const isStorage = cursorPosition.section === 'storage';
+          const maxSlots = isStorage ? 20 : 10;
+          const columns = isStorage ? 5 : 3;  // Different column count for each section
+          let currentSlot = cursorPosition.slot;
+          let newSlot = currentSlot;
+
+          switch (direction) {
+            case 'left':
+              if (currentSlot % columns !== 1) newSlot--;
+              break;
+            case 'right':
+              if (currentSlot % columns !== 0 && currentSlot < maxSlots) newSlot++;
+              break;
+            case 'up':
+              if (currentSlot > columns) newSlot -= columns;
+              break;
+            case 'down':
+              if (currentSlot + columns <= maxSlots) newSlot += columns;
+              break;
+            case 'tab':
+              // Switch between storage and inventory sections
+              cursorPosition.section = isStorage ? 'inventory' : 'storage';
+              // Restore last position for this section
+              newSlot = isStorage ? cursorPosition.lastInventorySlot : cursorPosition.lastStorageSlot;
+              break;
+          }
+
+          // Save last position for current section before switching
+          if (direction === 'tab') {
+            if (isStorage) {
+              cursorPosition.lastStorageSlot = currentSlot;
+            } else {
+              cursorPosition.lastInventorySlot = currentSlot;
+            }
+          }
+
+          cursorPosition.slot = newSlot;
+          updateCursorVisuals();
+          updateTransferButton();  // Add this line
+
+          // Add visual feedback for active section
+          document.querySelectorAll('.inventory-section').forEach(section => {
+            section.classList.remove('active');
+          });
+          const activeSection = cursorPosition.section === 'storage' ? 
+            document.querySelector('.inventory-section:first-child') :
+            document.querySelector('.inventory-section:last-child');
+          if (activeSection) {
+            activeSection.classList.add('active');
+          }
+        }
+
+        // Add this function to update visual cursor position
+        function updateCursorVisuals() {
+          // Remove cursor class from all slots
+          document.querySelectorAll('.storage-slot').forEach(slot => {
+            slot.classList.remove('cursor');
+          });
+
+          // Add cursor class to current slot
+          const selector = cursorPosition.section === 'storage' 
+            ? `.storage-grid .storage-slot[data-slot="${cursorPosition.slot}"]`
+            : `.player-inventory-grid .storage-slot[data-slot="${cursorPosition.slot}"]`;
+          
+          const currentSlot = document.querySelector(selector);
+          if (currentSlot) {
+            currentSlot.classList.add('cursor');
+          }
+        }
+
+        // Add this function to select the slot under the cursor
+        function selectSlotUnderCursor() {
+          if (cursorPosition.section === 'storage') {
+            selectStorageSlot(cursorPosition.slot);
+          } else {
+            selectInventorySlot(cursorPosition.slot);
+          }
+          updateTransferButton();  // Add this line
+        }
+
+        // Add this function to execute storage action when slots are selected
+        function executeStorageAction() {
+          // Get the source slot (where the cursor is)
+          const isSourceStorage = cursorPosition.section === 'storage';
+          const cursorSlot = cursorPosition.slot;
+          
+          // Check if source slot has an item
+          const sourceSlotElement = isSourceStorage 
+            ? document.querySelector(`.storage-grid .storage-slot[data-slot="${cursorSlot}"]`)
+            : document.querySelector(`.player-inventory-grid .storage-slot[data-slot="${cursorSlot}"]`);
+          
+          const hasSourceItem = sourceSlotElement?.querySelector('.slot-content') !== null;
+          if (!hasSourceItem) {
+            showCollectionMessage('Select a slot with an item first');
+            return;
+          }
+
+          // Set the source slot based on cursor position
+          if (isSourceStorage) {
+            selectedStorageSlot = cursorSlot;
+            
+            // Find first empty inventory slot
+            for (let i = 1; i <= 10; i++) {
+              if (!gameState.inventory.items[i]) {
+                gameState.inventory.selectedSlot = i;
+                handleStorageAction('WITHDRAW');
+                return;
+              }
+            }
+            showCollectionMessage('No available inventory slots');
+          } else {
+            gameState.inventory.selectedSlot = cursorSlot;
+            
+            // Find first empty storage slot
+            const emptySlot = document.querySelector(`.storage-grid .storage-slot:not(:has(.slot-content))`);
+            if (emptySlot) {
+              selectedStorageSlot = parseInt(emptySlot.dataset.slot);
+              handleStorageAction('DEPOSIT');
+            } else {
+              showCollectionMessage('No available storage slots');
+            }
+          }
+        }
+
+        // Update openStorageMenu to initialize cursor
+        function openStorageMenu(serverId, x, y) {
+          currentStorage = { serverId, x, y };
+          const modal = document.getElementById("storage-modal");
+          modal.classList.add("active");
+          
+          // Reset cursor position
+          cursorPosition = {
+            section: 'storage',
+            slot: 1,
+            lastStorageSlot: 1,
+            lastInventorySlot: 1
+          };
+          
+          loadStorageContents().then(() => {
+            updateCursorVisuals();
+          });
+        }
+
+        // Add this function to update the transfer button state
+        function updateTransferButton() {
+          const transferButton = document.getElementById('transfer-button');
+          
+          // Get the slot under cursor
+          const cursorSlot = cursorPosition.section === 'storage' 
+            ? document.querySelector(`.storage-grid .storage-slot[data-slot="${cursorPosition.slot}"]`)
+            : document.querySelector(`.player-inventory-grid .storage-slot[data-slot="${cursorPosition.slot}"]`);
+
+          // Check if cursor is over an item
+          const hasSourceItem = cursorSlot?.querySelector('.slot-content') !== null;
+
+          // Simply enable/disable button based on whether cursor is over an item
+          transferButton.disabled = !hasSourceItem;
+          transferButton.textContent = 'Transfer Item (X)';
+        }
     </script>
   </body>
 </html>

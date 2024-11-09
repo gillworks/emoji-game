@@ -82,7 +82,7 @@ CREATE TABLE map_data (
     metadata JSONB DEFAULT '{}'::jsonb,
     PRIMARY KEY (server_id, x, y),
     CONSTRAINT valid_terrain_types 
-        CHECK (terrain_type IN ('FOREST', 'MOUNTAIN', 'PLAIN', 'OCEAN', 'EMPTY_FOREST', 'HOUSE', 'FARM', 'WORKSHOP'))
+        CHECK (terrain_type IN ('FOREST', 'MOUNTAIN', 'PLAIN', 'OCEAN', 'EMPTY_FOREST', 'HOUSE', 'FARM', 'WORKSHOP', 'STORAGE_CHEST'))
 );
 
 -- Player positions table
@@ -183,6 +183,23 @@ CREATE TABLE resource_spawns (
     item_id TEXT REFERENCES items(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE (server_id, x, y)
+);
+
+------------------------------------------
+-- Storage System
+------------------------------------------
+
+CREATE TABLE storage_inventories (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    server_id uuid REFERENCES servers(id),
+    x integer,
+    y integer,
+    slot integer CHECK (slot >= 1 AND slot <= 20),
+    item_id text REFERENCES items(id),
+    quantity integer CHECK (quantity > 0),
+    created_at timestamp with time zone DEFAULT now(),
+    FOREIGN KEY (server_id, x, y) REFERENCES map_data(server_id, x, y),
+    UNIQUE (server_id, x, y, slot)
 );
 
 ------------------------------------------
@@ -971,6 +988,247 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Grant execute permissions
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO authenticated;
 
+-- Storage Function
+CREATE OR REPLACE FUNCTION handle_storage_action(
+    p_player_id uuid,
+    p_server_id uuid,
+    p_x integer,
+    p_y integer,
+    p_action storage_action,
+    p_storage_slot integer,
+    p_inventory_slot integer,
+    p_quantity integer DEFAULT NULL
+) RETURNS jsonb AS $$
+DECLARE
+    v_structure_owner uuid;
+    v_item_id text;
+    v_current_quantity integer;
+    v_max_stack integer;
+    v_item_emoji text;
+    v_item_name text;
+    v_target_item_id text;
+    v_target_quantity integer;
+    v_final_quantity integer;
+    v_temp_item_id text;
+    v_temp_quantity integer;
+BEGIN
+    -- Check structure ownership and type
+    SELECT (metadata->>'owner_id')::uuid
+    INTO v_structure_owner
+    FROM map_data
+    WHERE server_id = p_server_id
+    AND x = p_x
+    AND y = p_y
+    AND metadata->>'structure_id' = 'STORAGE_CHEST';
+
+    IF v_structure_owner IS NULL OR v_structure_owner != p_player_id THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'message', 'You don''t own this storage chest'
+        );
+    END IF;
+
+    -- Get items from both slots
+    SELECT item_id, quantity INTO v_item_id, v_current_quantity
+    FROM player_inventory
+    WHERE player_id = p_player_id AND slot = p_inventory_slot;
+
+    SELECT item_id, quantity INTO v_target_item_id, v_target_quantity
+    FROM storage_inventories
+    WHERE server_id = p_server_id 
+    AND x = p_x 
+    AND y = p_y 
+    AND slot = p_storage_slot;
+
+    -- Handle deposit
+    IF p_action = 'DEPOSIT' THEN
+        IF v_item_id IS NULL THEN
+            RETURN jsonb_build_object(
+                'success', false,
+                'message', 'No item in selected inventory slot'
+            );
+        END IF;
+
+        -- If target slot has a different item, perform swap
+        IF v_target_item_id IS NOT NULL AND v_target_item_id != v_item_id THEN
+            -- Store target item temporarily
+            v_temp_item_id := v_target_item_id;
+            v_temp_quantity := v_target_quantity;
+
+            -- Move inventory item to storage
+            INSERT INTO storage_inventories (server_id, x, y, slot, item_id, quantity)
+            VALUES (p_server_id, p_x, p_y, p_storage_slot, v_item_id, v_current_quantity)
+            ON CONFLICT (server_id, x, y, slot)
+            DO UPDATE SET 
+                item_id = v_item_id,
+                quantity = v_current_quantity;
+
+            -- Move storage item to inventory
+            UPDATE player_inventory
+            SET item_id = v_temp_item_id,
+                quantity = v_temp_quantity
+            WHERE player_id = p_player_id AND slot = p_inventory_slot;
+
+            RETURN jsonb_build_object(
+                'success', true,
+                'message', 'Items swapped successfully'
+            );
+        END IF;
+
+        -- Normal deposit logic for same item or empty slot
+        -- Get max stack size
+        SELECT max_stack INTO v_max_stack
+        FROM items
+        WHERE id = v_item_id;
+
+        -- Calculate quantity to deposit
+        v_current_quantity := LEAST(v_current_quantity, COALESCE(p_quantity, v_current_quantity));
+
+        -- If target slot has same item, check stack limit
+        IF v_target_item_id = v_item_id THEN
+            v_current_quantity := LEAST(v_current_quantity, v_max_stack - COALESCE(v_target_quantity, 0));
+        END IF;
+
+        IF v_current_quantity <= 0 THEN
+            RETURN jsonb_build_object(
+                'success', false,
+                'message', 'Cannot deposit zero or negative quantity'
+            );
+        END IF;
+
+        -- First, insert or update storage inventory
+        INSERT INTO storage_inventories (server_id, x, y, slot, item_id, quantity)
+        VALUES (p_server_id, p_x, p_y, p_storage_slot, v_item_id, 
+            CASE 
+                WHEN v_target_item_id = v_item_id THEN v_current_quantity + COALESCE(v_target_quantity, 0)
+                ELSE v_current_quantity
+            END)
+        ON CONFLICT (server_id, x, y, slot)
+        DO UPDATE SET 
+            quantity = CASE 
+                WHEN storage_inventories.item_id = v_item_id THEN storage_inventories.quantity + v_current_quantity
+                ELSE v_current_quantity
+            END,
+            item_id = v_item_id;
+
+        -- Then handle player inventory in a single step
+        IF v_current_quantity = v_current_quantity THEN
+            -- If we're moving the entire stack, just delete it
+            DELETE FROM player_inventory
+            WHERE player_id = p_player_id AND slot = p_inventory_slot;
+        ELSE
+            -- Otherwise update the quantity
+            UPDATE player_inventory
+            SET quantity = quantity - v_current_quantity
+            WHERE player_id = p_player_id AND slot = p_inventory_slot;
+        END IF;
+
+    -- Handle withdraw
+    ELSIF p_action = 'WITHDRAW' THEN
+        IF v_target_item_id IS NULL THEN
+            RETURN jsonb_build_object(
+                'success', false,
+                'message', 'No item in selected storage slot'
+            );
+        END IF;
+
+        -- If inventory slot has a different item, perform swap
+        IF v_item_id IS NOT NULL AND v_item_id != v_target_item_id THEN
+            -- Store inventory item temporarily
+            v_temp_item_id := v_item_id;
+            v_temp_quantity := v_current_quantity;
+
+            -- Move storage item to inventory
+            UPDATE player_inventory
+            SET item_id = v_target_item_id,
+                quantity = v_target_quantity
+            WHERE player_id = p_player_id AND slot = p_inventory_slot;
+
+            -- Move inventory item to storage
+            INSERT INTO storage_inventories (server_id, x, y, slot, item_id, quantity)
+            VALUES (p_server_id, p_x, p_y, p_storage_slot, v_temp_item_id, v_temp_quantity)
+            ON CONFLICT (server_id, x, y, slot)
+            DO UPDATE SET 
+                item_id = v_temp_item_id,
+                quantity = v_temp_quantity;
+
+            RETURN jsonb_build_object(
+                'success', true,
+                'message', 'Items swapped successfully'
+            );
+        END IF;
+
+        -- Normal withdraw logic for same item or empty slot
+        -- Get item details
+        SELECT emoji, name, max_stack
+        INTO v_item_emoji, v_item_name, v_max_stack
+        FROM items
+        WHERE id = v_target_item_id;
+
+        -- Calculate quantity to withdraw
+        v_current_quantity := LEAST(v_target_quantity, COALESCE(p_quantity, v_target_quantity));
+
+        -- If inventory slot has same item, check stack limit
+        IF v_item_id = v_target_item_id THEN
+            v_current_quantity := LEAST(v_current_quantity, v_max_stack - COALESCE(v_current_quantity, 0));
+        END IF;
+
+        v_final_quantity := CASE 
+            WHEN v_item_id = v_target_item_id THEN v_current_quantity + COALESCE(v_current_quantity, 0)
+            ELSE v_current_quantity
+        END;
+
+        IF v_current_quantity <= 0 OR v_final_quantity <= 0 THEN
+            RETURN jsonb_build_object(
+                'success', false,
+                'message', 'Cannot withdraw zero or negative quantity'
+            );
+        END IF;
+
+        -- First add to player inventory
+        INSERT INTO player_inventory (player_id, slot, item_id, quantity)
+        VALUES (p_player_id, p_inventory_slot, v_target_item_id, v_current_quantity)
+        ON CONFLICT (player_id, slot)
+        DO UPDATE SET 
+            quantity = CASE 
+                WHEN player_inventory.item_id = v_target_item_id THEN player_inventory.quantity + v_current_quantity
+                ELSE v_current_quantity
+            END,
+            item_id = v_target_item_id;
+
+        -- Then handle storage inventory in a single step
+        IF v_current_quantity = v_target_quantity THEN
+            -- If we're withdrawing the entire stack, just delete it
+            DELETE FROM storage_inventories
+            WHERE server_id = p_server_id 
+            AND x = p_x 
+            AND y = p_y 
+            AND slot = p_storage_slot;
+        ELSE
+            -- Otherwise update the quantity
+            UPDATE storage_inventories
+            SET quantity = quantity - v_current_quantity
+            WHERE server_id = p_server_id 
+            AND x = p_x 
+            AND y = p_y 
+            AND slot = p_storage_slot;
+        END IF;
+    END IF;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'message', format('Successfully %s %s %s', 
+            CASE p_action 
+                WHEN 'DEPOSIT' THEN 'deposited'
+                ELSE 'withdrawn'
+            END,
+            v_current_quantity,
+            COALESCE(v_item_name, 'items')
+        )
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 ------------------------------------------
 -- RLS Policies
 ------------------------------------------
@@ -992,6 +1250,7 @@ ALTER TABLE structures ENABLE ROW LEVEL SECURITY;
 ALTER TABLE crafting_recipes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE crafting_ingredients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE resource_spawns ENABLE ROW LEVEL SECURITY;
+ALTER TABLE storage_inventories ENABLE ROW LEVEL SECURITY;
 
 -- Players policies
 CREATE POLICY "Users can insert their own player record"
@@ -1174,6 +1433,25 @@ CREATE POLICY "Resources are viewable by all authenticated users"
     TO authenticated
     USING (true);
 
+-- Storage inventories policies
+CREATE POLICY "Storage contents are viewable by all authenticated users" ON storage_inventories
+    FOR SELECT
+    TO authenticated
+    USING (true);
+
+CREATE POLICY "Storage contents can only be modified by structure owner" ON storage_inventories
+    FOR ALL
+    TO authenticated
+    USING (
+        EXISTS (
+            SELECT 1 FROM map_data
+            WHERE map_data.server_id = storage_inventories.server_id
+            AND map_data.x = storage_inventories.x
+            AND map_data.y = storage_inventories.y
+            AND (map_data.metadata->>'owner_id')::uuid = auth.uid()
+        )
+    );
+
 ------------------------------------------
 -- Initial Data
 ------------------------------------------
@@ -1195,7 +1473,8 @@ INSERT INTO terrain_types (id, emoji, encounter, color, spawn_items) VALUES
     ('EMPTY_FOREST', '🌱', null, 'rgba(76, 175, 80, 0.3)', '[]'::jsonb),
     ('HOUSE', '🏠', null, 'rgba(139, 69, 19, 0.3)', '[]'::jsonb),
     ('FARM', '🌾', null, 'rgba(124, 252, 0, 0.3)', '[]'::jsonb),
-    ('WORKSHOP', '🏭', null, 'rgba(169, 169, 169, 0.3)', '[]'::jsonb);
+    ('WORKSHOP', '🏭', null, 'rgba(169, 169, 169, 0.3)', '[]'::jsonb),
+    ('STORAGE_CHEST', '📦', 'rgba(139, 69, 19, 0.3)', NULL, '[]'::jsonb);
 
 -- Insert items
 INSERT INTO items (id, emoji, name, stackable, max_stack) VALUES
@@ -1220,7 +1499,8 @@ VALUES
 INSERT INTO structures (id, emoji, name, description, terrain_type, allowed_terrain) VALUES
     ('HOUSE', '🏠', 'House', 'A cozy shelter', 'HOUSE', 'PLAIN'),
     ('FARM', '🌾', 'Farm', 'Grows food', 'FARM', 'PLAIN'),
-    ('WORKSHOP', '🏭', 'Workshop', 'Crafting station', 'WORKSHOP', 'PLAIN');
+    ('WORKSHOP', '🏭', 'Workshop', 'Crafting station', 'WORKSHOP', 'PLAIN'),
+    ('STORAGE_CHEST', '📦', 'Storage Chest', 'Store items securely', 'STORAGE_CHEST', 'PLAIN');
 
 -- Insert crafting recipes
 WITH recipes AS (
@@ -1276,6 +1556,19 @@ INSERT INTO game_configs (key, value) VALUES
         "spawn_chance": 0.1,
         "spawn_interval": 300
     }'::jsonb);
+
+-- Insert storage chest recipe
+WITH storage_recipe AS (
+    INSERT INTO crafting_recipes (id, structure_id, is_structure, quantity_produced)
+    VALUES (gen_random_uuid(), 'STORAGE_CHEST', true, 1)
+    RETURNING id
+)
+INSERT INTO crafting_ingredients (recipe_id, item_id, quantity_required)
+SELECT storage_recipe.id, item_id, quantity
+FROM storage_recipe, (VALUES 
+    ('WOOD', 4),
+    ('STONE', 2)
+) AS ingredients(item_id, quantity);
 
 ------------------------------------------
 -- Enable Realtime

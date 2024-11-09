@@ -120,6 +120,31 @@ A real-time multiplayer browser game where players explore a procedurally genera
   - Stack sizes configurable per item type
   - Visual feedback when collecting items
 
+### Storage System
+
+- Buildable storage chests (📦) for item storage
+- 20 storage slots per chest
+- Intuitive interface with keyboard controls:
+  - Arrow keys to move cursor
+  - Tab to switch between storage and inventory
+  - X to transfer items
+  - ESC to close storage menu
+- Mouse support:
+  - Click slots to move cursor
+  - Click transfer button or press X to move items
+- Automatic slot finding:
+  - Automatically finds first empty slot when transferring
+  - Prevents item loss by checking available space
+- Visual feedback:
+  - Gold highlight shows cursor position
+  - Disabled transfer button when no item under cursor
+  - Stack size indicators
+  - Hotkey numbers visible on inventory slots
+- Security features:
+  - Only chest owner can access contents
+  - Items persist across sessions
+  - Protected by row-level security
+
 ### Technical Features
 
 - Real-time database with Supabase
@@ -209,6 +234,25 @@ For detailed database information, see [Database Schema](database/schema.md)
 - Numbers 1-0: Quick select inventory slots
 - Visual feedback shows selected items with green highlight
 - Stack counts shown in bottom-right of slots
+
+### Storage Controls
+
+- E: Open storage chest (when standing on one)
+- Arrow keys: Move cursor between slots
+- Tab: Switch between storage and inventory sections
+- X: Transfer item under cursor
+- ESC: Close storage menu
+- Mouse: Click slots to move cursor
+
+### Building Storage
+
+- Open build menu (B)
+- Select Storage Chest
+- Requires:
+  - 4x Wood
+  - 2x Stone
+- Can only be built on plains
+- Each player can access only their own chests
 
 ## Technical Requirements
 
