@@ -2331,7 +2331,8 @@
           }
         });
 
-        function updateTileInfo() {
+        // Find the updateTileInfo function and replace it with this version
+        async function updateTileInfo() {
           if (!gameState.playerPos) {
             return;
           }
@@ -2348,7 +2349,37 @@
             terrainDisplay.textContent = currentTile.emoji;
           }
 
-          // Check for resources at current position
+          // Get resource and tool info for current terrain
+          try {
+            const { data: actionData, error } = await supabaseClient
+              .from('item_terrain_actions')
+              .select(`
+                item_id,
+                result_item_id,
+                items:item_id (emoji),
+                result_items:result_item_id (emoji)
+              `)
+              .eq('terrain_type', Object.keys(TERRAIN_TYPES).find(
+                type => TERRAIN_TYPES[type].emoji === currentTile.emoji
+              ));
+
+            if (error) throw error;
+
+            // Update resources display
+            const resourcesDisplay = document.getElementById("tile-resources");
+            if (resourcesDisplay) {
+              if (actionData && actionData.length > 0) {
+                // Show both tool and resource emojis
+                resourcesDisplay.textContent = `${actionData[0].result_items.emoji}${actionData[0].items.emoji}`;
+              } else {
+                resourcesDisplay.textContent = "";
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching terrain actions:', error);
+          }
+
+          // Check for resources at current position (keep existing resource check)
           checkForResources();
         }
 
