@@ -2383,10 +2383,11 @@
           checkForResources();
         }
 
-        // Add new function to check for resources
+        // Update the checkForResources function with this version
         async function checkForResources() {
           try {
-            const { data: resources, error } = await supabaseClient
+            // First check for resource spawns
+            const { data: resources, error: resourceError } = await supabaseClient
               .from('resource_spawns')
               .select(`
                 *,
@@ -2397,17 +2398,39 @@
               .eq('y', gameState.playerPos.y)
               .maybeSingle();
 
-            if (error) throw error;
+            if (resourceError) throw resourceError;
 
-            // Update actions display
+            // Then check for structures
+            const { data: mapData, error: mapError } = await supabaseClient
+              .from('map_data')
+              .select('metadata')
+              .eq('server_id', gameState.serverId)
+              .eq('x', gameState.playerPos.x)
+              .eq('y', gameState.playerPos.y)
+              .maybeSingle();
+
+            if (mapError) throw mapError;
+
+            // Update actions display and label
             const actionsDisplay = document.getElementById("tile-actions");
-            if (actionsDisplay) {
+            const actionsLabel = document.querySelector('.hotbar-slot[data-slot="actions"] .slot-label');
+            
+            if (actionsDisplay && actionsLabel) {
               if (resources) {
+                // It's a resource spawn
                 gameState.currentResource = resources;
                 actionsDisplay.textContent = resources.items.emoji;
+                actionsLabel.textContent = 'E to pick up';
+              } else if (mapData?.metadata?.structure_id) {
+                // It's a structure
+                gameState.currentResource = null;
+                actionsDisplay.textContent = ""; // Structure emoji is shown in terrain
+                actionsLabel.textContent = 'E to interact';
               } else {
+                // Nothing to interact with
                 gameState.currentResource = null;
                 actionsDisplay.textContent = "";
+                actionsLabel.textContent = ''; // Leave blank for non-interactive tiles
               }
             }
           } catch (error) {
