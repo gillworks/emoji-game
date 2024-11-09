@@ -1094,11 +1094,11 @@
             }
           }
 
-          // Draw other players with larger size
+          // Draw other players with their emojis
           ctx.font = `${cellSize * 0.9}px Arial`;
           gameState.otherPlayers.forEach((pos) => {
             ctx.fillText(
-              pos.emoji || "🦊",
+              pos.emoji || "🐻", // Use bear as fallback
               pos.x * cellSize + cellSize / 2,
               pos.y * cellSize + cellSize / 2
             );
@@ -1679,51 +1679,17 @@
               )
               .subscribe();
 
-            // Add player position subscription
-            supabaseClient
-              .channel("player_positions")
-              .on(
-                "postgres_changes",
-                {
-                  event: "*",
-                  schema: "public",
-                  table: "player_positions",
-                  filter: `server_id=eq.${gameState.serverId}`,
-                },
-                async (payload) => {
-                  if (
-                    payload.eventType === "INSERT" ||
-                    payload.eventType === "UPDATE"
-                  ) {
-                    if (
-                      payload.new &&
-                      payload.new.player_id !== gameState.playerId
-                    ) {
-                      // Update or add other player position
-                      gameState.otherPlayers.set(payload.new.player_id, {
-                        x: payload.new.x,
-                        y: payload.new.y,
-                      });
-                      renderMap();
-                    }
-                  } else if (payload.eventType === "DELETE") {
-                    if (
-                      payload.old &&
-                      payload.old.player_id !== gameState.playerId
-                    ) {
-                      // Remove player who left
-                      gameState.otherPlayers.delete(payload.old.player_id);
-                      renderMap();
-                    }
-                  }
-                }
-              )
-              .subscribe();
-
-            // Load initial positions of other players
+            // Load initial positions of other players with their emojis
             const { data: otherPositions } = await supabaseClient
               .from("player_positions")
-              .select("player_id, x, y")
+              .select(`
+                player_id,
+                x,
+                y,
+                players:player_id (
+                  emoji
+                )
+              `)
               .eq("server_id", gameState.serverId)
               .neq("player_id", gameState.playerId);
 
@@ -1731,7 +1697,11 @@
             gameState.otherPlayers.clear();
             if (otherPositions) {
               otherPositions.forEach((pos) => {
-                gameState.otherPlayers.set(pos.player_id, { x: pos.x, y: pos.y });
+                gameState.otherPlayers.set(pos.player_id, {
+                  x: pos.x,
+                  y: pos.y,
+                  emoji: pos.players?.emoji || "🐻", // Use bear as fallback
+                });
               });
             }
 
@@ -2151,12 +2121,23 @@
                 table: "player_positions",
                 filter: `server_id=eq.${gameState.serverId}`,
               },
-              (payload) => {
-                if (!gameState.playerPos) return; // Don't process if player not initialized
+              async (payload) => {
+                if (!gameState.playerPos) return;
 
                 const position = payload.new;
-                // Don't update our own position from the subscription
                 if (position.player_id === gameState.playerId) return;
+
+                // Get player's emoji from players table
+                const { data: playerData, error: playerError } = await supabaseClient
+                  .from("players")
+                  .select("emoji")
+                  .eq("id", position.player_id)
+                  .single();
+
+                if (playerError) {
+                  console.error("Error fetching player emoji:", playerError);
+                  return;
+                }
 
                 switch (payload.eventType) {
                   case "INSERT":
@@ -2164,7 +2145,7 @@
                     gameState.otherPlayers.set(position.player_id, {
                       x: position.x,
                       y: position.y,
-                      emoji: position.emoji,
+                      emoji: playerData.emoji || "🐻", // Use bear as fallback
                     });
                     break;
                   case "DELETE":
