@@ -2,6 +2,16 @@
 
 This document outlines the database schema for the Emoji Adventure game.
 
+## Types
+
+### item_action_type
+
+ENUM ('GATHER', 'TRANSFORM')
+
+### move_result
+
+ENUM ('MOVE', 'STACK', 'SWAP')
+
 ## Tables
 
 ### players
@@ -122,9 +132,9 @@ Stores player inventory items and quantities
 | Column | Type | Description |
 |--------|------|-------------|
 | player_id | uuid | Part of composite primary key, foreign key to players.id |
-| slot | integer | Part of composite primary key, slot number (1-10) |
+| slot | integer | Part of composite primary key, CHECK (slot >= 1 AND slot <= 10) |
 | item_id | text | Foreign key to items.id |
-| quantity | integer | Stack size for the item |
+| quantity | integer | Stack size, CHECK (quantity > 0) |
 
 ### items
 
