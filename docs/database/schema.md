@@ -165,8 +165,8 @@ Defines how items interact with terrain
 | min_quantity | integer | Minimum items received (default: 1) |
 | max_quantity | integer | Maximum items received (default: 1) |
 | success_rate | decimal | Chance of success (0.0-1.0) |
-| hits_to_transform | integer | Hits needed before transformation |
-| current_hits | jsonb | Tracks hits per location |
+| hits_to_transform | integer | Hits needed before transformation (e.g., 3 hits to fell a tree) |
+| current_hits | jsonb | Tracks hits per location using format: {"server_id_x_y": hits_count} |
 | cooldown_seconds | integer | Time between actions (default: 0) |
 
 ### crafting_recipes

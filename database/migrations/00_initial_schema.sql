@@ -354,14 +354,17 @@ DECLARE
     v_new_quantity INTEGER;
     v_is_tool BOOLEAN;
     v_debug JSONB;
+    v_hits_to_transform INTEGER;
+    v_current_hits INTEGER;
+    v_location_key TEXT;
 BEGIN
     -- Get the item being used and check if it's a tool
-    SELECT i.id, i.id IN ('FISHING_ROD', 'AXE', 'PICKAXE')  -- List of tools that shouldn't be consumed
+    SELECT i.id, i.id IN ('FISHING_ROD', 'AXE', 'PICKAXE')
     INTO v_item_type, v_is_tool
     FROM player_inventory pi
     JOIN items i ON i.id = pi.item_id
     WHERE pi.player_id = p_player_id AND pi.slot = p_item_slot
-    LIMIT 1;  -- Add LIMIT 1 to ensure we only get one row
+    LIMIT 1;
 
     IF v_item_type IS NULL THEN
         RETURN jsonb_build_object(
@@ -375,12 +378,14 @@ BEGIN
     FROM map_data
     WHERE server_id = p_server_id AND x = p_x AND y = p_y;
 
-    -- Get the result item and quantity range for this action
+    -- Get the action details including hits_to_transform
     SELECT ita.result_item_id, 
            ita.min_quantity,
            ita.max_quantity,
-           i.emoji
-    INTO v_result_item_id, v_min_quantity, v_max_quantity, v_result_item_emoji
+           ita.hits_to_transform,
+           i.emoji,
+           ita.current_hits
+    INTO v_result_item_id, v_min_quantity, v_max_quantity, v_hits_to_transform, v_result_item_emoji, v_debug
     FROM item_terrain_actions ita
     JOIN items i ON i.id = ita.result_item_id
     WHERE ita.item_id = v_item_type AND ita.terrain_type = v_terrain_type;
@@ -390,6 +395,103 @@ BEGIN
             'success', false,
             'message', 'Cannot use that item here'
         );
+    END IF;
+
+    -- Handle hit tracking for transformable terrain
+    IF v_hits_to_transform IS NOT NULL THEN
+        -- Create a unique key for this location
+        v_location_key := p_server_id || '_' || p_x || '_' || p_y;
+        
+        -- Get current hits for this location
+        v_current_hits := (v_debug->v_location_key)::integer;
+        IF v_current_hits IS NULL THEN
+            v_current_hits := 0;
+        END IF;
+        
+        -- Increment hits
+        v_current_hits := v_current_hits + 1;
+        
+        -- Update the current_hits in the database
+        UPDATE item_terrain_actions
+        SET current_hits = jsonb_set(
+            COALESCE(current_hits, '{}'::jsonb),
+            array[v_location_key],
+            to_jsonb(v_current_hits)
+        )
+        WHERE item_id = v_item_type AND terrain_type = v_terrain_type;
+
+        -- Check if we've reached the transform threshold
+        IF v_current_hits >= v_hits_to_transform THEN
+            -- Transform the terrain
+            UPDATE map_data
+            SET terrain_type = 'EMPTY_FOREST'
+            WHERE server_id = p_server_id AND x = p_x AND y = p_y;
+            
+            -- Reset hit counter for this location
+            UPDATE item_terrain_actions
+            SET current_hits = current_hits - v_location_key
+            WHERE item_id = v_item_type AND terrain_type = v_terrain_type;
+            
+            -- Calculate and award resources for the final hit
+            v_result_quantity := v_min_quantity + floor(random() * (v_max_quantity - v_min_quantity + 1))::integer;
+            
+            -- Get max stack size for result item
+            SELECT max_stack INTO v_max_stack
+            FROM items
+            WHERE id = v_result_item_id;
+
+            -- First try to find an existing stack with space
+            SELECT slot, quantity 
+            INTO v_slot, v_current_quantity
+            FROM player_inventory
+            WHERE player_id = p_player_id 
+            AND item_id = v_result_item_id
+            AND quantity < v_max_stack
+            ORDER BY slot
+            LIMIT 1;
+
+            -- If no existing stack found, find an empty slot
+            IF v_slot IS NULL THEN
+                SELECT MIN(t.slot)
+                INTO v_empty_slot
+                FROM generate_series(1, 10) t(slot)
+                WHERE NOT EXISTS (
+                    SELECT 1 
+                    FROM player_inventory pi 
+                    WHERE pi.player_id = p_player_id 
+                    AND pi.slot = t.slot
+                );
+
+                IF v_empty_slot IS NULL THEN
+                    RETURN jsonb_build_object(
+                        'success', false,
+                        'message', 'Inventory is full!'
+                    );
+                END IF;
+
+                -- Insert into empty slot
+                INSERT INTO player_inventory (player_id, slot, item_id, quantity)
+                VALUES (p_player_id, v_empty_slot, v_result_item_id, v_result_quantity);
+            ELSE
+                -- Calculate new quantity with bounds checking
+                v_new_quantity := v_current_quantity + v_result_quantity;
+                IF v_new_quantity > v_max_stack THEN 
+                    v_new_quantity := v_max_stack;
+                END IF;
+
+                -- Update existing stack
+                UPDATE player_inventory
+                SET quantity = v_new_quantity
+                WHERE player_id = p_player_id 
+                AND slot = v_slot;
+            END IF;
+
+            -- Return with both transformation and resource messages
+            RETURN jsonb_build_object(
+                'success', true,
+                'message', format('Tree fell! +%s %s', v_result_quantity, v_result_item_emoji)
+            );
+        END IF;
     END IF;
 
     -- For fishing, determine success (30% chance)
