@@ -12,6 +12,10 @@ ENUM ('GATHER', 'TRANSFORM')
 
 ENUM ('MOVE', 'STACK', 'SWAP')
 
+### storage_action
+
+ENUM ('DEPOSIT', 'WITHDRAW')
+
 ## Tables
 
 ### players
@@ -213,6 +217,20 @@ Tracks spawned resources on the map
 | item_id | text | Foreign key to items.id |
 | created_at | timestamp | When the resource spawned |
 
+### storage_inventories
+
+Stores items in storage chests
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| server_id | uuid | Foreign key to servers.id |
+| x | integer | X coordinate of storage |
+| y | integer | Y coordinate of storage |
+| slot | integer | Storage slot number (1-20) |
+| item_id | text | Foreign key to items.id |
+| quantity | integer | Stack size, CHECK (quantity > 0) |
+| created_at | timestamp | When the item was stored |
+
 ## Row Level Security (RLS)
 
 All tables have RLS enabled with appropriate policies:
@@ -274,6 +292,12 @@ All tables have RLS enabled with appropriate policies:
 
 - All authenticated users can view resource spawns
 - Only admins can modify resource spawns
+
+### storage_inventories
+
+- Storage contents are viewable by all authenticated users
+- Storage contents can only be modified by the structure owner
+- Ownership is verified through map_data metadata
 
 ## Stored Procedures
 
@@ -394,6 +418,31 @@ Handles periodic resource spawning:
 - Finds all empty tiles (no current resource)
 - Attempts to spawn resources based on chance
 - Called by cron job every X minutes (configurable)
+
+### handle_storage_action(p_player_id UUID, p_server_id UUID, p_x INTEGER, p_y INTEGER, p_action storage_action, p_storage_slot INTEGER, p_inventory_slot INTEGER, p_quantity INTEGER DEFAULT NULL)
+
+Handles depositing and withdrawing items from storage chests:
+
+- Verifies storage chest ownership
+- Handles item swapping between inventory and storage
+- Manages stack sizes and quantities
+- Returns success/failure message with details
+
+Parameters:
+
+- p_player_id: Player performing the action
+- p_server_id: Server ID where storage is located
+- p_x: X coordinate of storage
+- p_y: Y coordinate of storage
+- p_action: Either 'DEPOSIT' or 'WITHDRAW'
+- p_storage_slot: Selected storage slot (1-20)
+- p_inventory_slot: Selected inventory slot (1-10)
+- p_quantity: Optional amount to transfer
+
+Returns JSON with:
+
+- success: boolean indicating if action succeeded
+- message: Status or error message
 
 ## Game Configurations
 
