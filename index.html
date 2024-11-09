@@ -500,6 +500,7 @@
             structures: []
           },
           currentResource: null,
+          resourceChannel: null, 
         };
 
         let lastActiveInterval;
@@ -1559,7 +1560,7 @@
             }
 
             await fetchGameConfigs();
-            await loadStructures(); // Add this line
+            await loadStructures();
             
             // Find or create server should be called before checking positions
             const serverId = await findOrCreateServer();
@@ -1664,7 +1665,6 @@
               }
             }
 
-            // Add this line after setting the player position
             updateTileInfo();
 
             // Load inventory after player is authenticated and server is set up
@@ -1841,6 +1841,8 @@
                 bounceOffset: 0,
               },
               playerSubscription: null,
+              resourceChannel: null, 
+              currentResource: null,
             };
 
             // Reset username display
@@ -2185,35 +2187,27 @@
                   filter: `server_id=eq.${gameState.serverId}`
                 },
                 async (payload) => {
-                  console.log('Resource change event:', payload.eventType, payload);
-                  
                   // Only process if we're on a tile
                   if (!gameState.playerPos) return;
 
                   const currentX = gameState.playerPos.x;
                   const currentY = gameState.playerPos.y;
 
-                  // Handle DELETE
+                  // Clear UI immediately for any DELETE event at our position
                   if (payload.eventType === 'DELETE' && 
                       payload.old && 
                       payload.old.x === currentX && 
                       payload.old.y === currentY) {
-                    console.log('Resource deleted at current position, clearing display');
-                    // Clear the resource display immediately
                     gameState.currentResource = null;
                     const actionsDisplay = document.getElementById("tile-actions");
-                    if (actionsDisplay) {
-                      actionsDisplay.textContent = "";
-                    }
+                    const resourcesDisplay = document.getElementById("tile-resources");
+                    if (actionsDisplay) actionsDisplay.textContent = "";
+                    if (resourcesDisplay) resourcesDisplay.textContent = "";
+                    return;
                   }
-                  // Handle INSERT
-                  else if (payload.eventType === 'INSERT' && 
-                           payload.new && 
-                           payload.new.x === currentX && 
-                           payload.new.y === currentY) {
-                    console.log('New resource inserted at current position, updating display');
-                    await checkForResources();
-                  }
+                  
+                  // For all other events, verify current state
+                  await checkForResources();
                 }
               )
               .subscribe();
@@ -2325,15 +2319,19 @@
           }
         }
 
-        // Update the resource collection handler
+        // Update the resource collection handler to clear UI first
         async function collectResource() {
           if (!gameState.currentResource) return;
 
           try {
-            // Clear the UI immediately
+            // Clear the UI and state BEFORE making the request
             const actionsDisplay = document.getElementById("tile-actions");
+            const resourcesDisplay = document.getElementById("tile-resources");
             if (actionsDisplay) {
               actionsDisplay.textContent = "";
+            }
+            if (resourcesDisplay) {
+              resourcesDisplay.textContent = "";
             }
             gameState.currentResource = null;
 
@@ -2351,12 +2349,12 @@
               await loadInventory();
             } else {
               showCollectionMessage(data.message);
-              // Re-check resources to ensure UI is in sync
+              // Only re-check resources if collection failed
               await checkForResources();
             }
           } catch (error) {
             console.error('Error collecting resource:', error);
-            // Re-check resources on error to ensure UI is in sync
+            // Re-check resources on error
             await checkForResources();
           }
         }
