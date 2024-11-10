@@ -1833,6 +1833,8 @@
         // Add a flag to prevent double cleanup
         let isCleaningUp = false;
 
+        let isLoggingOut = false;
+
         async function leaveServer() {
           if (!gameState.serverId || isCleaningUp) {
             return;
@@ -1841,7 +1843,22 @@
           isCleaningUp = true;
 
           try {
-            // Remove all realtime subscriptions
+            // Only remove player position if actually logging out
+            if (isLoggingOut && gameState.playerId) {
+              const { error: posError } = await supabaseClient
+                .from("player_positions")
+                .delete()
+                .match({
+                  player_id: gameState.playerId,
+                  server_id: gameState.serverId
+                });
+
+              if (posError) {
+                console.error("Error removing player position:", posError);
+              }
+            }
+
+            // Rest of cleanup remains the same...
             if (gameState.resourceChannel) {
               await gameState.resourceChannel.unsubscribe();
             }
@@ -1849,18 +1866,19 @@
               await gameState.playerSubscription.unsubscribe();
             }
             
-            // Unsubscribe from map changes
             await supabaseClient.channel('map_changes').unsubscribe();
             
-            // Delete server_players entry
-            const { error: serverPlayerError } = await supabaseClient
-              .from("server_players")
-              .delete()
-              .eq("player_id", gameState.playerId)
-              .eq("server_id", gameState.serverId);
+            // Only remove from server_players if logging out
+            if (isLoggingOut) {
+              const { error: serverPlayerError } = await supabaseClient
+                .from("server_players")
+                .delete()
+                .eq("player_id", gameState.playerId)
+                .eq("server_id", gameState.serverId);
 
-            if (serverPlayerError) {
-              console.error("Error removing server player:", serverPlayerError);
+              if (serverPlayerError) {
+                console.error("Error removing server player:", serverPlayerError);
+              }
             }
 
           } catch (error) {
@@ -1870,15 +1888,31 @@
           }
         }
 
-        // Update event listeners to handle synchronously
-        window.addEventListener("beforeunload", (event) => {
-          // Call leaveServer synchronously
-          leaveServer();
+        // Update window event listeners to only handle subscription cleanup
+        window.addEventListener("beforeunload", () => {
+          if (!isLoggingOut) {
+            // Only clean up subscriptions on refresh/close
+            if (gameState.resourceChannel) {
+              gameState.resourceChannel.unsubscribe();
+            }
+            if (gameState.playerSubscription) {
+              gameState.playerSubscription.unsubscribe();
+            }
+            supabaseClient.channel('map_changes').unsubscribe();
+          }
         });
 
         window.addEventListener("pagehide", () => {
-          // Call leaveServer synchronously
-          leaveServer();
+          if (!isLoggingOut) {
+            // Only clean up subscriptions on refresh/close
+            if (gameState.resourceChannel) {
+              gameState.resourceChannel.unsubscribe();
+            }
+            if (gameState.playerSubscription) {
+              gameState.playerSubscription.unsubscribe();
+            }
+            supabaseClient.channel('map_changes').unsubscribe();
+          }
         });
 
         // Keep visibility change for debugging but don't call leaveServer
@@ -1889,6 +1923,7 @@
 
         async function handleLogout() {
           try {
+            isLoggingOut = true; // Set flag before cleanup
             showLoadingScreen();
 
             // Clean up subscriptions
@@ -1932,8 +1967,23 @@
                 bounceOffset: 0,
               },
               playerSubscription: null,
-              resourceChannel: null, 
+              resourceChannel: null,
               currentResource: null,
+              inventory: {
+                items: {},
+                stacks: {},
+                selectedSlot: null
+              },
+              building: {
+                isOpen: false,
+                selectedStructureIndex: -1,
+                structures: []
+              },
+              crafting: {
+                isOpen: false,
+                selectedRecipeIndex: -1,
+                recipes: []
+              }
             };
 
             // Reset username display
@@ -1945,6 +1995,8 @@
           } catch (error) {
             console.error("Error during logout:", error);
             hideLoadingScreen();
+          } finally {
+            isLoggingOut = false; // Reset flag after cleanup
           }
         }
 
