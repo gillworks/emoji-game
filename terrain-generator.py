@@ -8,6 +8,7 @@ import asyncio
 from dotenv import load_dotenv
 import os
 import argparse
+from typing import Optional, Dict
 
 # Load environment variables from .env.local
 load_dotenv('.env.local')
@@ -16,15 +17,25 @@ class TerrainGenerator:
     def __init__(self, width, height, supabase_url, supabase_key):
         self.width = width
         self.height = height
-        self.terrain_types = {
-            'OCEAN': '🌊',
-            'MOUNTAIN': '⛰',
-            'FOREST': '🌳',
-            'PLAIN': '🌱'
-        }
-        # Initialize Supabase client
         self.supabase = create_client(supabase_url, supabase_key)
         
+        # Load terrain types from database
+        result = self.supabase.table('terrain_types').select('*').execute()
+        self.terrain_types = {
+            terrain['id'].strip(): terrain['emoji'] 
+            for terrain in result.data
+        }
+        
+        # Portal config
+        self.portal_configs = {
+            'HOUSE': {
+                'chance': 1.00,  # 100% chance for houses to be portals
+                'destinations': [
+                    {'name': 'house_interior', 'width': 10, 'height': 10}
+                ]
+            }
+        }
+
     def generate_noise_map(self, scale=50.0, octaves=6):
         """Generate a coherent noise map using multiple octaves of noise"""
         noise_map = np.zeros((self.height, self.width))
@@ -127,7 +138,7 @@ class TerrainGenerator:
         
         return terrain_map
 
-    async def create_new_server(self, server_name, max_players=100):
+    def create_new_server(self, server_name, max_players=100):
         """Create a new server in the database"""
         server_data = {
             'id': str(uuid.uuid4()),
@@ -142,50 +153,178 @@ class TerrainGenerator:
         result = self.supabase.table('servers').insert(server_data).execute()
         return result.data[0]
 
-    async def generate_and_save_map(self, server_name, max_players=100):
+    def create_interior_server(self, name: str, width: int, height: int) -> Optional[Dict]:
+        try:
+            server = self.create_new_server(
+                server_name=f"{name}-{uuid.uuid4().hex[:8]}",
+                max_players=10
+            )
+            
+            # Create a map of terrain types we'll use
+            interior_terrains = {
+                'floor': 'FLOOR',
+                'door': 'DOOR',
+                'storage': 'STORAGE_CHEST'
+            }
+            
+            # Generate interior map (all floor with door at bottom)
+            terrain_map = np.full((height, width), interior_terrains['floor'], dtype='U15')
+            
+            # Add door at bottom center
+            door_x = width // 2
+            door_y = height - 1
+            terrain_map[door_y][door_x] = interior_terrains['door']
+            
+            # Save the interior map
+            map_data = []
+            for y in range(height):
+                for x in range(width):
+                    terrain = str(terrain_map[y][x])
+                    metadata = {}
+                    
+                    # Verify terrain type is valid
+                    if terrain not in self.terrain_types:
+                        raise ValueError(f"Invalid terrain type: {terrain}")
+                    
+                    # Don't set portal config for door yet - we'll update it later
+                    
+                    map_data.append({
+                        'server_id': server['id'],
+                        'x': x,
+                        'y': y,
+                        'terrain_type': terrain,
+                        'original_terrain_type': terrain,
+                        'metadata': metadata
+                    })
+            
+            # Insert map data
+            self.supabase.table('map_data').insert(map_data).execute()
+            
+            return {
+                'server': server,
+                'door_position': {'x': door_x, 'y': door_y}
+            }
+            
+        except Exception as e:
+            print(f"Error creating interior server: {e}")
+            if 'server' in locals():
+                try:
+                    self.supabase.table('servers').delete().eq('id', server['id']).execute()
+                except Exception as cleanup_error:
+                    print(f"Error cleaning up server: {cleanup_error}")
+            return None
+
+    def generate_and_save_map(self, server_name, max_players=100):
         """Generate a new map and save it to the database"""
         try:
             # Create new server
-            server = await self.create_new_server(server_name, max_players)
+            server = self.create_new_server(server_name, max_players)
             server_id = server['id']
+            
+            # Track created interior servers and their entry points
+            interior_servers = {}
+            house_positions = []
             
             # Generate terrain map
             terrain_map = self.generate_map()
+            
+            # Add some houses on plains (5% chance)
+            for y in range(self.height):
+                for x in range(self.width):
+                    if terrain_map[y][x] == 'PLAIN' and random.random() < 0.05:
+                        terrain_map[y][x] = 'HOUSE'
+                        house_positions.append({'x': x, 'y': y})
             
             # Prepare map data for insertion
             map_data = []
             for y in range(self.height):
                 for x in range(self.width):
                     terrain = terrain_map[y][x]
+                    metadata = {}
+                    
+                    # Configure house portals
+                    if terrain == 'HOUSE':
+                        destination = self.portal_configs['HOUSE']['destinations'][0]
+                        interior_result = self.create_interior_server(
+                            name=destination['name'],
+                            width=destination['width'],
+                            height=destination['height']
+                        )
+                        
+                        if interior_result:
+                            interior_servers[f"{x}_{y}"] = interior_result
+                            metadata['portal_config'] = {
+                                'destination_server': interior_result['server']['id'],
+                                'destination_x': destination['width'] // 2,
+                                'destination_y': destination['height'] - 2
+                            }
+                    
                     map_data.append({
                         'server_id': server_id,
                         'x': x,
                         'y': y,
                         'terrain_type': terrain,
-                        'original_terrain_type': terrain
+                        'original_terrain_type': terrain,
+                        'metadata': metadata
                     })
             
-            # Insert map data in chunks to avoid request size limits
-            chunk_size = 1000
-            for i in range(0, len(map_data), chunk_size):
-                chunk = map_data[i:i + chunk_size]
-                self.supabase.table('map_data').insert(chunk).execute()
+            # Insert map data
+            self.supabase.table('map_data').insert(map_data).execute()
+            
+            # Configure return portals in interior servers
+            for pos_key, interior_data in interior_servers.items():
+                x, y = map(int, pos_key.split('_'))
+                
+                print(f"Setting return portal for house at {x},{y} to server {server_id}")
+                print(f"Door position: {interior_data['door_position']}")
+                print(f"Interior server: {interior_data['server']['id']}")
+                
+                try:
+                    # Use configure_portal function to set up the return portal
+                    result = self.supabase.rpc('configure_portal', {
+                        'p_server_id': interior_data['server']['id'],
+                        'p_x': interior_data['door_position']['x'],
+                        'p_y': interior_data['door_position']['y'],
+                        'p_destination_server': server_id,
+                        'p_destination_x': x,
+                        'p_destination_y': y + 1
+                    }).execute()
+
+                    # Verify the update worked
+                    if result.data:
+                        print(f"Successfully configured return portal: {result.data}")
+                    else:
+                        print("Failed to configure return portal - no data returned")
+                        # Double check if the door tile exists
+                        check = self.supabase.table('map_data').select('*').match({
+                            'server_id': interior_data['server']['id'],
+                            'x': interior_data['door_position']['x'],
+                            'y': interior_data['door_position']['y']
+                        }).execute()
+                        print(f"Door tile check: {check.data}")
+                except Exception as e:
+                    print(f"Error configuring return portal: {e}")
             
             return {
                 'server_id': server_id,
                 'name': server_name,
                 'map_size': f"{self.width}x{self.height}",
-                'tiles_created': len(map_data)
+                'tiles_created': len(map_data),
+                'houses_created': len(house_positions),
+                'interior_servers': len(interior_servers)
             }
             
         except Exception as e:
-            # If there's an error, attempt to clean up the server if it was created
+            # Clean up on error
             if 'server_id' in locals():
                 self.supabase.table('servers').delete().eq('id', server_id).execute()
+                # Also clean up any created interior servers
+                for interior in interior_servers.values():
+                    self.supabase.table('servers').delete().eq('id', interior['server']['id']).execute()
             raise Exception(f"Error generating map: {str(e)}")
 
 # Modified usage example
-async def create_new_game_world(width=120, height=120):
+def create_new_game_world(width=120, height=120):
     # Get Supabase credentials from environment variables
     supabase_url = os.getenv('NEXT_PUBLIC_SUPABASE_URL')
     supabase_key = os.getenv('NEXT_PUBLIC_SUPABASE_ANON_KEY')
@@ -202,7 +341,7 @@ async def create_new_game_world(width=120, height=120):
     )
     
     # Generate and save a new map
-    result = await generator.generate_and_save_map(
+    result = generator.generate_and_save_map(
         server_name=f"World-{uuid.uuid4().hex[:8]}",
         max_players=100
     )
@@ -217,12 +356,12 @@ if __name__ == "__main__":
     parser.add_argument('--height', type=int, default=120, help='Height of the map (default: 120)')
     args = parser.parse_args()
 
-    async def main():
+    def main():
         try:
-            result = await create_new_game_world(width=args.width, height=args.height)
+            result = create_new_game_world(width=args.width, height=args.height)
             print("Successfully created new world:", result)
         except Exception as e:
             print(f"Error creating world: {e}")
     
-    # Run the async function
-    asyncio.run(main())
+    # Run the function
+    main()

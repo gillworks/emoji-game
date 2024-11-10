@@ -2420,7 +2420,6 @@
               )
               .subscribe();
 
-            console.log('All subscriptions set up successfully');
           } catch (error) {
             console.error('Error setting up subscriptions:', error);
           }
@@ -2551,7 +2550,7 @@
 
             if (resourceError) throw resourceError;
 
-            // Then check for structures
+            // Then check for structures and portals
             const { data: mapData, error: mapError } = await supabaseClient
               .from('map_data')
               .select('metadata')
@@ -2574,19 +2573,26 @@
                 actionsDisplay.textContent = resources.items.emoji;
                 actionsLabel.textContent = 'E to pick up';
                 actionsSlot.style.display = 'flex';
-              } else if (mapData?.metadata?.structure_id) {
-                // It's a structure
-                gameState.currentResource = null;
-                
-                if (mapData.metadata.structure_id === 'STORAGE_CHEST') {
+              } else if (mapData?.metadata) {
+                if (mapData.metadata.portal_config) {
+                  // It's a portal
+                  gameState.currentResource = null;
                   // Use the terrain emoji from the current location display
                   const terrainEmoji = document.getElementById("tile-terrain").textContent;
                   actionsDisplay.textContent = terrainEmoji;
-                  // Show different message based on ownership
+                  actionsLabel.textContent = 'E to enter';
+                  actionsSlot.style.display = 'flex';
+                } else if (mapData.metadata.structure_id === 'STORAGE_CHEST') {
+                  // It's a storage chest
+                  gameState.currentResource = null;
+                  const terrainEmoji = document.getElementById("tile-terrain").textContent;
+                  actionsDisplay.textContent = terrainEmoji;
                   actionsLabel.textContent = mapData.metadata.owner_id === gameState.playerId ? 
                     'E to open' : 'Not your storage';
                   actionsSlot.style.display = 'flex';
                 } else {
+                  // Other structure
+                  gameState.currentResource = null;
                   actionsDisplay.textContent = ""; // Structure emoji is shown in terrain
                   actionsLabel.textContent = 'E to interact';
                   actionsSlot.style.display = 'flex';
@@ -2604,15 +2610,15 @@
           }
         }
 
-        // Update the collectResource function to check ownership before opening storage
+        // Update collectResource to handle portals
         async function collectResource() {
           if (!gameState.playerPos) return;
 
           try {
-            // Check if there's a structure at the current position
+            // Check if there's a structure or portal at the current position
             const { data: mapData, error: mapError } = await supabaseClient
               .from('map_data')
-              .select('metadata')
+              .select('metadata, terrain_type')  // Add terrain_type to selection
               .match({
                 server_id: gameState.serverId,
                 x: gameState.playerPos.x,
@@ -2622,7 +2628,40 @@
 
             if (mapError) throw mapError;
 
-            // If this is a storage chest, verify ownership before opening
+            // Handle portal transportation
+            if (mapData?.metadata?.portal_config) {
+
+              const { data, error } = await supabaseClient.rpc('handle_server_transport', {
+                p_player_id: gameState.playerId,
+                p_current_server_id: gameState.serverId,
+                p_current_x: gameState.playerPos.x,
+                p_current_y: gameState.playerPos.y
+              });
+
+              if (error) {
+                console.error('Portal transport error:', error);
+                throw error;
+              }
+
+              if (data.success) {
+                // Update game state with new location
+                gameState.serverId = data.new_server_id;
+                gameState.playerPos = {
+                  x: data.new_x,
+                  y: data.new_y
+                };
+
+                // Reload map and other server-specific data
+                await loadMap(gameState.serverId);
+                await setupPlayerSubscriptions();
+                showCollectionMessage('Entered new area');
+              } else {
+                showCollectionMessage(data.message);
+              }
+              return;
+            }
+
+            // Handle storage chest
             if (mapData?.metadata?.structure_id === 'STORAGE_CHEST') {
               const ownerId = mapData.metadata.owner_id;
               
@@ -2631,12 +2670,11 @@
                 return;
               }
               
-              // If we get here, the player owns the chest
               openStorageMenu(gameState.serverId, gameState.playerPos.x, gameState.playerPos.y);
               return;
             }
 
-            // Rest of existing resource collection code...
+            // Handle regular resource collection
             if (!gameState.currentResource) return;
 
             const { data, error } = await supabaseClient.rpc('collect_resource', {

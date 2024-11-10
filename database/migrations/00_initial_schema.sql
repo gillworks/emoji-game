@@ -82,7 +82,7 @@ CREATE TABLE map_data (
     metadata JSONB DEFAULT '{}'::jsonb,
     PRIMARY KEY (server_id, x, y),
     CONSTRAINT valid_terrain_types 
-        CHECK (terrain_type IN ('FOREST', 'MOUNTAIN', 'PLAIN', 'OCEAN', 'EMPTY_FOREST', 'HOUSE', 'FARM', 'WORKSHOP', 'STORAGE_CHEST'))
+        CHECK (terrain_type IN ('FOREST', 'MOUNTAIN', 'PLAIN', 'OCEAN', 'EMPTY_FOREST', 'HOUSE', 'FARM', 'WORKSHOP', 'STORAGE_CHEST', 'DOOR', 'FLOOR'))
 );
 
 -- Player positions table
@@ -1642,6 +1642,10 @@ CREATE POLICY "Storage contents are viewable by all authenticated users" ON stor
     TO authenticated
     USING (true);
 
+-- First drop the existing policy if it exists
+DROP POLICY IF EXISTS "Storage contents can only be modified by structure owner" ON storage_inventories;
+
+-- Then create the new policy
 CREATE POLICY "Storage contents can only be modified by structure owner" ON storage_inventories
     FOR ALL
     TO authenticated
@@ -1651,7 +1655,10 @@ CREATE POLICY "Storage contents can only be modified by structure owner" ON stor
             WHERE map_data.server_id = storage_inventories.server_id
             AND map_data.x = storage_inventories.x
             AND map_data.y = storage_inventories.y
-            AND (map_data.metadata->>'owner_id')::uuid = auth.uid()
+            AND (
+                (map_data.metadata->>'owner_id') IS NULL OR  -- Allow if no owner
+                (map_data.metadata->>'owner_id')::uuid = auth.uid()  -- Or if owner matches
+            )
         )
     );
 
@@ -1677,7 +1684,9 @@ INSERT INTO terrain_types (id, emoji, encounter, color, spawn_items) VALUES
     ('HOUSE', '🏠', null, 'rgba(139, 69, 19, 0.3)', '[]'::jsonb),
     ('FARM', '🌾', null, 'rgba(124, 252, 0, 0.3)', '[]'::jsonb),
     ('WORKSHOP', '🏭', null, 'rgba(169, 169, 169, 0.3)', '[]'::jsonb),
-    ('STORAGE_CHEST', '📦', 'rgba(139, 69, 19, 0.3)', NULL, '[]'::jsonb);
+    ('STORAGE_CHEST', '📦', 'rgba(139, 69, 19, 0.3)', NULL, '[]'::jsonb),
+    ('DOOR', '🚪', null, 'rgba(139, 69, 19, 0.3)', '[]'::jsonb),
+    ('FLOOR', '🟫', null, 'rgba(139, 69, 19, 0.2)', '[]'::jsonb);
 
 -- Insert items
 INSERT INTO items (id, emoji, name, stackable, max_stack) VALUES

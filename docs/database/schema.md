@@ -390,6 +390,31 @@ Example spawn_items format:
 ]
 ```
 
+### Portal System
+
+The portal system uses the `metadata` column in `map_data` to store portal configurations:
+
+```json
+{
+  "portal_config": {
+    "destination_server": "uuid",  // ID of destination server
+    "destination_x": integer,      // X coordinate in destination
+    "destination_y": integer       // Y coordinate in destination
+  }
+}
+```
+
+Functions:
+
+- `handle_server_transport`: Moves players between servers via portals
+- `configure_portal`: Sets up portal configurations in map tiles
+
+Example uses:
+
+- House interiors: Houses transport players to interior servers
+- Return doors: Transport players back to main world
+- Each portal has a corresponding return portal at destination
+
 ### try_spawn_resource(p_server_id UUID, p_x INTEGER, p_y INTEGER)
 
 Attempts to spawn a resource at the given location:
