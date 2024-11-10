@@ -756,15 +756,19 @@
 
             for (let page = 0; page < totalPages; page++) {
               const { data: mapData, error } = await supabaseClient
-                .from("map_data")
-                .select("x, y, terrain_type, metadata")  // Added metadata to selection
-                .eq("server_id", serverId)
+                .from('map_data')
+                .select(`
+                  x, y, 
+                  terrain_type,
+                  metadata
+                `)
+                .eq('server_id', serverId)
                 .range(page * pageSize, (page + 1) * pageSize - 1);
 
               if (error) throw error;
 
               // Populate map from database
-              mapData.forEach((tile) => {
+              for (const tile of mapData) {
                 if (
                   tile.x >= 0 &&
                   tile.x < gameState.mapWidth &&
@@ -772,14 +776,28 @@
                   tile.y < gameState.mapHeight &&
                   TERRAIN_TYPES[tile.terrain_type]
                 ) {
-                  // Create a copy of the terrain type and add metadata
+                  // Create a copy of the terrain type
                   const terrainWithMetadata = {
                     ...TERRAIN_TYPES[tile.terrain_type],
                     metadata: tile.metadata
                   };
+
+                  // If this is a structure, get its variant emojis
+                  if (tile.metadata?.structure_id) {
+                    const { data: structure, error: structureError } = await supabaseClient
+                      .from('structures')
+                      .select('variant_emojis')
+                      .eq('id', tile.metadata.structure_id)
+                      .single();
+
+                    if (!structureError && structure) {
+                      terrainWithMetadata.metadata.variant_emojis = structure.variant_emojis;
+                    }
+                  }
+
                   gameState.map[tile.y][tile.x] = terrainWithMetadata;
                 }
-              });
+              }
             }
 
             renderMap();
@@ -1148,17 +1166,14 @@
 
               // Get the correct emoji for structures
               let displayEmoji = terrain.emoji;
-              if (terrain.metadata?.structure_id === 'STORAGE_CHEST') {
-                const variant = terrain.metadata.variant || 'private';
-                displayEmoji = variant === 'public' ? '🗄️' : '📦';
-              } else if (terrain.metadata?.structure_id === 'HOUSE') {
-                const variant = terrain.metadata.variant || 'house';
-                const variantEmojis = {
-                  'house': '🏠',
-                  'church': '⛪️',
-                  'office': '🏢'
-                };
-                displayEmoji = variantEmojis[variant] || '🏠';
+              if (terrain.metadata?.structure_id) {
+                const structureId = terrain.metadata.structure_id;
+                const variant = terrain.metadata.variant || 'default';
+                
+                // Get the correct emoji based on variant and structure
+                if (terrain.metadata.variant_emojis) {
+                  displayEmoji = terrain.metadata.variant_emojis[variant] || displayEmoji;
+                }
               }
 
               // Draw terrain emoji with larger size
@@ -2623,6 +2638,19 @@
 
             if (mapError) throw mapError;
 
+            // If there's a structure, get its details
+            let structureData;
+            if (mapData?.metadata?.structure_id) {
+              const { data: structure, error: structureError } = await supabaseClient
+                .from('structures')
+                .select('id, variant_emojis')
+                .eq('id', mapData.metadata.structure_id)
+                .single();
+                
+              if (structureError) throw structureError;
+              structureData = structure;
+            }
+
             // Update actions display and label
             const actionsDisplay = document.getElementById("tile-actions");
             const actionsSlot = document.querySelector('.hotbar-slot[data-slot="actions"]');
@@ -2639,61 +2667,62 @@
                 if (mapData.metadata.portal_config) {
                   // It's a portal
                   gameState.currentResource = null;
-                  // Use the terrain emoji from the current location display
-                  const terrainEmoji = document.getElementById("tile-terrain").textContent;
-                  actionsDisplay.textContent = terrainEmoji;
-                  actionsLabel.textContent = 'E to enter';
-                  actionsSlot.style.display = 'flex';
-                } else if (mapData.metadata.structure_id === 'STORAGE_CHEST') {
-                  // Get the structure details for variant emojis
-                  const { data: structureData, error: structureError } = await supabaseClient
-                    .from('structures')
-                    .select('variant_emojis')
-                    .eq('id', 'STORAGE_CHEST')
-                    .single();
-
-                  if (structureError) throw structureError;
-
-                  // Get the correct emoji based on variant
-                  const variant = mapData.metadata.variant || 'private';
-                  const variantEmojis = structureData?.variant_emojis || {
-                    'public': '🗄️',
-                    'private': '📦'
-                  };
-                  const displayEmoji = variantEmojis[variant];
+                  // Get the current terrain with its structure variant
+                  const currentTerrain = gameState.map[gameState.playerPos.y][gameState.playerPos.x];
                   
-                  gameState.currentResource = null;
-                  actionsDisplay.textContent = displayEmoji;
-                  
-                  // Check if chest has an owner
-                  if (mapData.metadata.owner_id) {
-                    // If owned, only allow access to owner
-                    actionsLabel.textContent = mapData.metadata.owner_id === gameState.playerId ? 
-                      'E to open' : 'Not your storage';
-                  } else {
-                    // If no owner, allow anyone to access
-                    actionsLabel.textContent = 'E to open';
+                  // Use the variant emoji if it's a structure with variants
+                  let displayEmoji;
+                  if (currentTerrain.metadata?.structure_id && currentTerrain.metadata?.variant_emojis) {
+                    const variant = currentTerrain.metadata.variant || 'default';
+                    displayEmoji = currentTerrain.metadata.variant_emojis[variant];
                   }
-                  actionsSlot.style.display = 'flex';
-                } else if (mapData.metadata.structure_id === 'HOUSE') {
-                  // Get the correct emoji based on variant
-                  const variant = mapData.metadata.variant || 'house';
-                  const variantEmojis = {
-                    'house': '🏠',
-                    'church': '⛪️',
-                    'office': '🏢'
-                  };
-                  const displayEmoji = variantEmojis[variant] || '🏠';
                   
-                  gameState.currentResource = null;
+                  // Fallback to terrain emoji if no variant found
+                  if (!displayEmoji) {
+                    displayEmoji = currentTerrain.emoji;
+                  }
+                  
                   actionsDisplay.textContent = displayEmoji;
                   actionsLabel.textContent = 'E to enter';
                   actionsSlot.style.display = 'flex';
-                } else {
-                  // Other structure
+                } else if (mapData.metadata.structure_id) {
+                  const structureId = mapData.metadata.structure_id;
+                  const variant = mapData.metadata.variant || 'default';
+                  
+                  // Get the correct emoji based on variant and structure
+                  let displayEmoji;
+                  
+                  if (structureData?.variant_emojis) {
+                    displayEmoji = structureData.variant_emojis[variant];
+                  }
+
+                  // Fallback emoji if no variant found
+                  if (!displayEmoji) {
+                    const fallbacks = {
+                      'STORAGE_CHEST': '📦',
+                      'HOUSE': '🏠'
+                    };
+                    displayEmoji = fallbacks[structureId];
+                  }
+
                   gameState.currentResource = null;
-                  actionsDisplay.textContent = ""; // Structure emoji is shown in terrain
-                  actionsLabel.textContent = 'E to interact';
+                  actionsDisplay.textContent = displayEmoji;
+                  
+                  if (structureId === 'STORAGE_CHEST') {
+                    // Check if chest has an owner
+                    if (mapData.metadata.owner_id) {
+                      // If owned, only allow access to owner
+                      actionsLabel.textContent = mapData.metadata.owner_id === gameState.playerId ? 
+                        'E to open' : 'Not your storage';
+                    } else {
+                      // If no owner, allow anyone to access
+                      actionsLabel.textContent = 'E to open';
+                    }
+                  } else if (structureId === 'HOUSE') {
+                    actionsLabel.textContent = 'E to enter';
+                  } else {
+                    actionsLabel.textContent = 'E to interact';
+                  }
                   actionsSlot.style.display = 'flex';
                 }
               } else {
