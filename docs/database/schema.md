@@ -119,7 +119,16 @@ Stores the terrain type for each coordinate on each server's map
 | y | integer | Y coordinate |
 | terrain_type | text | Current type of terrain at this location |
 | original_terrain_type | text | Original type of terrain (for map resets) |
-| metadata | jsonb | Structure metadata (owner_id, built_at, etc.) |
+| metadata | jsonb | Structure metadata including: |
+| | | - owner_id: UUID of structure builder |
+| | | - built_at: Timestamp of construction |
+| | | - structure_id: ID of structure type |
+| | | - portal_config: Portal configuration with format: |
+| | | {
+| | | "destination_server": UUID,
+| | | "destination_x": INTEGER,
+| | | "destination_y": INTEGER
+| | | } |
 
 ### server_players
 
