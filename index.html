@@ -1461,13 +1461,63 @@
 
           // Don't process movement if any modal is open
           if (document.querySelector('.modal.active')) {
-            // Still handle ESC key for closing modals
+            // Handle ESC key for closing modals
             if (key === 'escape') {
               if (gameState.crafting.isOpen) closeCraftingMenu();
               if (gameState.building.isOpen) closeBuildMenu();
               closeStorageMenu();
+              return;
             }
-            return;
+
+            // Handle arrow keys for crafting menu
+            if (gameState.crafting.isOpen) {
+              switch (key) {
+                case "arrowup":
+                  e.preventDefault();
+                  navigateRecipes(-1);
+                  return;
+                case "arrowdown":
+                  e.preventDefault();
+                  navigateRecipes(1);
+                  return;
+                case "c":
+                  if (gameState.crafting.selectedRecipeIndex !== -1) {
+                    craftSelectedRecipe();
+                  }
+                  e.preventDefault();
+                  return;
+              }
+              return;
+            }
+
+            // Handle arrow keys for building menu
+            if (gameState.building.isOpen) {
+              switch (key) {
+                case "arrowup":
+                  e.preventDefault();
+                  navigateStructures(-1);
+                  return;
+                case "arrowdown":
+                  e.preventDefault();
+                  navigateStructures(1);
+                  return;
+                case "b":
+                  if (gameState.building.selectedStructureIndex !== -1) {
+                    buildSelectedStructure();
+                  }
+                  e.preventDefault();
+                  return;
+              }
+              return;
+            }
+
+            // Handle storage menu keys (already implemented)
+            if (document.getElementById("storage-modal").classList.contains("active")) {
+              // ... existing storage menu key handling ...
+              return;
+            }
+            
+            return; // Don't process other keys while modal is open
           }
 
           // Handle battle controls first if in battle
