@@ -2918,7 +2918,6 @@
                 `;
               }
 
-              // Update click handler to move cursor
               slot.onclick = () => {
                 cursorPosition.section = 'storage';
                 cursorPosition.slot = i;
@@ -2928,7 +2927,7 @@
               storageGrid.appendChild(slot);
             }
 
-            // Generate player inventory slots
+            // Generate player inventory slots using current gameState
             const inventoryGrid = document.querySelector('.player-inventory-grid');
             inventoryGrid.innerHTML = '';
 
@@ -2953,7 +2952,6 @@
               slotNumber.textContent = i === 10 ? '0' : i;
               slot.appendChild(slotNumber);
 
-              // Update click handler to move cursor
               slot.onclick = () => {
                 cursorPosition.section = 'inventory';
                 cursorPosition.slot = i;
@@ -2963,7 +2961,7 @@
               inventoryGrid.appendChild(slot);
             }
 
-            // Update cursor visuals
+            // Update cursor visuals and transfer button
             updateCursorVisuals();
             updateTransferButton();
           } catch (error) {
@@ -3091,6 +3089,10 @@
             case "x":
               e.preventDefault();
               executeStorageAction();
+              break;
+            case "s":
+              e.preventDefault();
+              splitCurrentStack();
               break;
           }
         });
@@ -3245,10 +3247,61 @@
 
           // Check if cursor is over an item
           const hasSourceItem = cursorSlot?.querySelector('.slot-content') !== null;
+          const stackSize = cursorSlot?.querySelector('.slot-content')?.getAttribute('data-stack');
+          const canSplit = stackSize && parseInt(stackSize) > 1;
 
-          // Simply enable/disable button based on whether cursor is over an item
           transferButton.disabled = !hasSourceItem;
-          transferButton.textContent = 'Transfer Item (X)';
+          transferButton.textContent = `${canSplit ? 'Transfer Stack (X) | Split 1 (S)' : 'Transfer Item (X)'}`;
+        }
+
+        // Add new function to handle splitting
+        async function splitCurrentStack() {
+          const isSourceStorage = cursorPosition.section === 'storage';
+          const cursorSlot = cursorPosition.slot;
+          
+          // Check if source slot has a stack
+          const sourceSlotElement = isSourceStorage 
+            ? document.querySelector(`.storage-grid .storage-slot[data-slot="${cursorSlot}"]`)
+            : document.querySelector(`.player-inventory-grid .storage-slot[data-slot="${cursorSlot}"]`);
+          
+          const stackSize = sourceSlotElement?.querySelector('.slot-content')?.getAttribute('data-stack');
+          if (!stackSize || parseInt(stackSize) <= 1) {
+            showCollectionMessage('Need at least 2 items to split');
+            return;
+          }
+
+          try {
+            const { data, error } = await supabaseClient.rpc('handle_storage_action', {
+              p_player_id: gameState.playerId,
+              p_server_id: currentStorage.serverId,
+              p_x: currentStorage.x,
+              p_y: currentStorage.y,
+              p_action: 'SPLIT',
+              p_storage_slot: isSourceStorage ? cursorSlot : null,
+              p_inventory_slot: !isSourceStorage ? cursorSlot : null
+            });
+
+            if (error) throw error;
+
+            if (data.success) {
+              showCollectionMessage(data.message);
+              
+              // First update the main inventory
+              await loadInventory();
+              
+              // Then update the storage modal display
+              await loadStorageContents();
+              
+              // Update cursor visuals and transfer button
+              updateCursorVisuals();
+              updateTransferButton();
+            } else {
+              showCollectionMessage(data.message);
+            }
+          } catch (error) {
+            console.error('Error splitting stack:', error);
+            showCollectionMessage('Error splitting stack');
+          }
         }
     </script>
   </body>
