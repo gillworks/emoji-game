@@ -138,7 +138,7 @@ class TerrainGenerator:
         
         return terrain_map
 
-    def create_new_server(self, server_name, max_players=100):
+    def create_new_server(self, server_name, max_players=100, width=None, height=None):
         """Create a new server in the database"""
         server_data = {
             'id': str(uuid.uuid4()),
@@ -146,7 +146,9 @@ class TerrainGenerator:
             'status': 'active',
             'created_at': datetime.utcnow().isoformat(),
             'last_active': datetime.utcnow().isoformat(),
-            'max_players': max_players
+            'max_players': max_players,
+            'map_width': width if width is not None else self.width,
+            'map_height': height if height is not None else self.height
         }
         
         # Insert server record
@@ -157,7 +159,9 @@ class TerrainGenerator:
         try:
             server = self.create_new_server(
                 server_name=f"{name}-{uuid.uuid4().hex[:8]}",
-                max_players=10
+                max_players=10,
+                width=width,
+                height=height
             )
             
             # Create a map of terrain types we'll use
@@ -256,7 +260,7 @@ class TerrainGenerator:
                             metadata['portal_config'] = {
                                 'destination_server': interior_result['server']['id'],
                                 'destination_x': destination['width'] // 2,
-                                'destination_y': destination['height'] - 2
+                                'destination_y': destination['height'] - 1
                             }
                     
                     map_data.append({
@@ -275,35 +279,27 @@ class TerrainGenerator:
             for pos_key, interior_data in interior_servers.items():
                 x, y = map(int, pos_key.split('_'))
                 
-                print(f"Setting return portal for house at {x},{y} to server {server_id}")
+                print(f"Configuring return portal for house at {x},{y}")
                 print(f"Door position: {interior_data['door_position']}")
                 print(f"Interior server: {interior_data['server']['id']}")
                 
                 try:
-                    # Use configure_portal function to set up the return portal
                     result = self.supabase.rpc('configure_portal', {
                         'p_server_id': interior_data['server']['id'],
                         'p_x': interior_data['door_position']['x'],
                         'p_y': interior_data['door_position']['y'],
                         'p_destination_server': server_id,
                         'p_destination_x': x,
-                        'p_destination_y': y + 1
+                        'p_destination_y': y
                     }).execute()
 
-                    # Verify the update worked
-                    if result.data:
-                        print(f"Successfully configured return portal: {result.data}")
+                    if result.data.get('success'):
+                        print(f"Successfully configured return portal: {result.data['message']}")
                     else:
-                        print("Failed to configure return portal - no data returned")
-                        # Double check if the door tile exists
-                        check = self.supabase.table('map_data').select('*').match({
-                            'server_id': interior_data['server']['id'],
-                            'x': interior_data['door_position']['x'],
-                            'y': interior_data['door_position']['y']
-                        }).execute()
-                        print(f"Door tile check: {check.data}")
+                        print(f"Failed to configure return portal: {result.data}")
+                        
                 except Exception as e:
-                    print(f"Error configuring return portal: {e}")
+                    print(f"Error configuring return portal: {str(e)}")
             
             return {
                 'server_id': server_id,
