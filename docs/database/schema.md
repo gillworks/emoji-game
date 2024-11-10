@@ -304,9 +304,19 @@ All tables have RLS enabled with appropriate policies:
 
 ### storage_inventories
 
-- Storage contents are viewable by all authenticated users
-- Storage contents can only be modified by the structure owner
-- Ownership is verified through map_data metadata
+Storage chests can be either owned or public:
+
+- Public chests (no owner_id in metadata) can be accessed by any player
+- Owned chests can only be accessed by the player who built them
+- House interior chests are automatically public
+- Player-built chests are owned by the builder
+
+RLS policies ensure:
+
+- All authenticated users can view storage contents
+- Storage contents can be modified if either:
+  - The chest has no owner (public chest)
+  - The chest's owner_id matches the current user
 
 ## Stored Procedures
 
