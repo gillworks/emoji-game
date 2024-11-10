@@ -189,8 +189,8 @@ class TerrainGenerator:
                         terrain_map[y][x] = interior_terrains['storage']
                         metadata = {
                             'structure_id': 'STORAGE_CHEST',
-                            'built_at': datetime.utcnow().isoformat()
-                            # No owner_id means it's a public chest
+                            'built_at': datetime.utcnow().isoformat(),
+                            'variant': 'public'  # Explicitly set as public chest
                         }
                         map_data.append({
                             'server_id': server['id'],
@@ -207,8 +207,8 @@ class TerrainGenerator:
                         terrain_map[y][x] = interior_terrains['storage']
                         metadata = {
                             'structure_id': 'STORAGE_CHEST',
-                            'built_at': datetime.utcnow().isoformat()
-                            # No owner_id means it's a public chest
+                            'built_at': datetime.utcnow().isoformat(),
+                            'variant': 'public'  # Explicitly set as public chest
                         }
                         map_data.append({
                             'server_id': server['id'],

@@ -749,23 +749,19 @@
               .fill()
               .map(() => Array(gameState.mapWidth).fill(TERRAIN_TYPES.PLAIN));
 
-            // Calculate total tiles needed
+            // Load map data in pages
             const totalTiles = gameState.mapWidth * gameState.mapHeight;
             const pageSize = 1000;
             const totalPages = Math.ceil(totalTiles / pageSize);
 
-            // Load map data in pages
             for (let page = 0; page < totalPages; page++) {
               const { data: mapData, error } = await supabaseClient
                 .from("map_data")
-                .select("x, y, terrain_type")
+                .select("x, y, terrain_type, metadata")  // Added metadata to selection
                 .eq("server_id", serverId)
                 .range(page * pageSize, (page + 1) * pageSize - 1);
 
-              if (error) {
-                console.error(`Error loading page ${page}:`, error);
-                throw error;
-              }
+              if (error) throw error;
 
               // Populate map from database
               mapData.forEach((tile) => {
@@ -776,13 +772,16 @@
                   tile.y < gameState.mapHeight &&
                   TERRAIN_TYPES[tile.terrain_type]
                 ) {
-                  gameState.map[tile.y][tile.x] =
-                    TERRAIN_TYPES[tile.terrain_type];
+                  // Create a copy of the terrain type and add metadata
+                  const terrainWithMetadata = {
+                    ...TERRAIN_TYPES[tile.terrain_type],
+                    metadata: tile.metadata
+                  };
+                  gameState.map[tile.y][tile.x] = terrainWithMetadata;
                 }
               });
             }
 
-            // After map is fully loaded
             renderMap();
             updateTileInfo();
           } catch (error) {
@@ -1124,9 +1123,7 @@
         function renderMap() {
           const canvas = document.getElementById("map-canvas");
           const ctx = canvas.getContext("2d");
-          const cellSize =
-            Math.min(window.innerWidth, window.innerHeight) *
-            gameState.viewport.cellSizeMultiplier;
+          const cellSize = Math.min(window.innerWidth, window.innerHeight) * gameState.viewport.cellSizeMultiplier;
 
           // Reset any transformations
           ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -1149,13 +1146,20 @@
               ctx.fillStyle = terrain.color;
               ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
 
+              // Get the correct emoji for storage chests
+              let displayEmoji = terrain.emoji;
+              if (terrain.metadata?.structure_id === 'STORAGE_CHEST') {
+                const variant = terrain.metadata.variant || 'private';
+                displayEmoji = variant === 'public' ? '🗄️' : '📦';
+              }
+
               // Draw terrain emoji with larger size
               ctx.font = `${cellSize * 0.9}px Arial`;
               ctx.textAlign = "center";
               ctx.textBaseline = "middle";
               ctx.fillStyle = "white";
               ctx.fillText(
-                terrain.emoji,
+                displayEmoji,
                 x * cellSize + cellSize / 2,
                 y * cellSize + cellSize / 2
               );
@@ -2633,10 +2637,25 @@
                   actionsLabel.textContent = 'E to enter';
                   actionsSlot.style.display = 'flex';
                 } else if (mapData.metadata.structure_id === 'STORAGE_CHEST') {
-                  // It's a storage chest
+                  // Get the structure details for variant emojis
+                  const { data: structureData, error: structureError } = await supabaseClient
+                    .from('structures')
+                    .select('variant_emojis')
+                    .eq('id', 'STORAGE_CHEST')
+                    .single();
+
+                  if (structureError) throw structureError;
+
+                  // Get the correct emoji based on variant
+                  const variant = mapData.metadata.variant || 'private';
+                  const variantEmojis = structureData?.variant_emojis || {
+                    'public': '🗄️',
+                    'private': '📦'
+                  };
+                  const displayEmoji = variantEmojis[variant];
+                  
                   gameState.currentResource = null;
-                  const terrainEmoji = document.getElementById("tile-terrain").textContent;
-                  actionsDisplay.textContent = terrainEmoji;
+                  actionsDisplay.textContent = displayEmoji;
                   
                   // Check if chest has an owner
                   if (mapData.metadata.owner_id) {

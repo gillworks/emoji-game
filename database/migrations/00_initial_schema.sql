@@ -161,7 +161,11 @@ CREATE TABLE structures (
     description TEXT,
     terrain_type TEXT NOT NULL REFERENCES terrain_types(id),
     allowed_terrain jsonb NOT NULL DEFAULT '["PLAIN"]'::jsonb,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW())
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
+    variant_emojis jsonb DEFAULT '{
+        "public": "🗄️",
+        "private": "📦"
+    }'::jsonb
 );
 
 -- Crafting recipes table
@@ -756,7 +760,11 @@ BEGIN
             metadata = jsonb_build_object(
                 'structure_id', v_structure.id,
                 'owner_id', p_player_id,
-                'built_at', now()
+                'built_at', now(),
+                'variant', CASE 
+                    WHEN v_structure.id = 'STORAGE_CHEST' THEN 'private'
+                    ELSE NULL 
+                END
             )
         WHERE server_id = p_server_id 
         AND x = p_x 

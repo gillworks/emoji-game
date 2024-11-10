@@ -37,7 +37,7 @@ A real-time multiplayer browser game where players explore a procedurally genera
 - Each house has its own interior server with:
   - Floor tiles (🟫) for walking space
   - Door (🚪) for exiting back to main world
-  - Storage chests (📦) along walls for public storage
+  - Storage chests (🗄️) along walls for public storage
 - Press 'E' at the door to return to the main world
 - All storage chests in houses are public (accessible by anyone)
 - Players appear in front of the house when exiting
