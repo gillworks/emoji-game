@@ -147,7 +147,7 @@ CREATE TABLE structures (
     name TEXT NOT NULL,
     description TEXT,
     terrain_type TEXT NOT NULL REFERENCES terrain_types(id),
-    allowed_terrain TEXT NOT NULL REFERENCES terrain_types(id),
+    allowed_terrain jsonb NOT NULL DEFAULT '["PLAIN"]'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW())
 );
 
@@ -604,13 +604,12 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Crafting Functions
 CREATE OR REPLACE FUNCTION handle_crafting(
-    p_player_id uuid,
-    p_recipe_id uuid,
-    p_x integer DEFAULT NULL,
-    p_y integer DEFAULT NULL,
-    p_server_id uuid DEFAULT NULL
-)
-RETURNS jsonb AS $$
+    p_player_id UUID,
+    p_recipe_id UUID,
+    p_x INTEGER DEFAULT NULL,
+    p_y INTEGER DEFAULT NULL,
+    p_server_id UUID DEFAULT NULL
+) RETURNS jsonb AS $$
 DECLARE
     v_recipe crafting_recipes%ROWTYPE;
     v_ingredient RECORD;
@@ -620,6 +619,7 @@ DECLARE
     v_current_terrain text;
     v_remaining_quantity integer;
     v_stack RECORD;
+    v_terrain_valid boolean;
 BEGIN
     -- Get the recipe
     SELECT * INTO v_recipe
@@ -646,8 +646,16 @@ BEGIN
         FROM map_data
         WHERE server_id = p_server_id AND x = p_x AND y = p_y;
 
-        -- Check if we can build here
-        IF v_current_terrain != v_structure.allowed_terrain THEN
+        -- Check if current terrain is in allowed_terrain array
+        v_terrain_valid := FALSE;
+        FOR i IN 0..jsonb_array_length(v_structure.allowed_terrain) - 1 LOOP
+            IF v_current_terrain = jsonb_array_element_text(v_structure.allowed_terrain, i) THEN
+                v_terrain_valid := TRUE;
+                EXIT;
+            END IF;
+        END LOOP;
+
+        IF NOT v_terrain_valid THEN
             RETURN jsonb_build_object(
                 'success', false,
                 'message', format('Cannot build %s here', v_structure.name)
@@ -655,6 +663,7 @@ BEGIN
         END IF;
     END IF;
 
+    -- Rest of the function remains exactly the same from here...
     -- Check if player has all required ingredients
     v_missing_items := ARRAY[]::text[];
     FOR v_ingredient IN (
@@ -780,7 +789,7 @@ BEGIN
         )
     );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER; 
 
 -- Resource Collection Function
 CREATE OR REPLACE FUNCTION collect_resource(
@@ -1709,10 +1718,10 @@ VALUES
 
 -- Insert structures
 INSERT INTO structures (id, emoji, name, description, terrain_type, allowed_terrain) VALUES
-    ('HOUSE', '🏠', 'House', 'A cozy shelter', 'HOUSE', 'PLAIN'),
-    ('FARM', '🌾', 'Farm', 'Grows food', 'FARM', 'PLAIN'),
-    ('WORKSHOP', '🏭', 'Workshop', 'Crafting station', 'WORKSHOP', 'PLAIN'),
-    ('STORAGE_CHEST', '📦', 'Storage Chest', 'Store items securely', 'STORAGE_CHEST', 'PLAIN');
+    ('HOUSE', '🏠', 'House', 'A cozy shelter', 'HOUSE', '["PLAIN"]'::jsonb),
+    ('FARM', '🌾', 'Farm', 'Grows food', 'FARM', '["PLAIN"]'::jsonb),
+    ('WORKSHOP', '🏭', 'Workshop', 'Crafting station', 'WORKSHOP', '["PLAIN"]'::jsonb),
+    ('STORAGE_CHEST', '📦', 'Storage Chest', 'Store items securely', 'STORAGE_CHEST', '["PLAIN", "FLOOR"]'::jsonb);
 
 -- Insert crafting recipes
 WITH recipes AS (

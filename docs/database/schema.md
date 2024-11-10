@@ -202,7 +202,7 @@ Defines buildable structures in the game
 | name | text | Display name |
 | description | text | Structure description |
 | terrain_type | text | What terrain type it becomes when built |
-| allowed_terrain | text | What terrain type it can be built on |
+| allowed_terrain | jsonb | Array of terrain types this can be built on (default: ["PLAIN"]) |
 | created_at | timestamp | When the structure was added |
 
 ### resource_spawns

@@ -2894,6 +2894,7 @@
           });
         }
 
+        // Find the showStructureDetails function and replace it with:
         function showStructureDetails(structure) {
           const detailsDiv = document.getElementById("structure-details");
           
@@ -2914,6 +2915,16 @@
             .map(ing => `${ing.quantity_required}x ${ing.item_id.emoji} ${ing.item_id.name}`)
             .join("<br>");
 
+          // Convert allowed_terrain array to emoji list
+          let allowedTerrainEmojis = [];
+          try {
+            // No need to parse - allowed_terrain is already an array
+            allowedTerrainEmojis = structure.allowed_terrain.map(terrain => TERRAIN_TYPES[terrain].emoji);
+          } catch (error) {
+            console.error('Error getting terrain emojis:', error);
+            allowedTerrainEmojis = ['❓'];
+          }
+
           detailsDiv.innerHTML = `
             <h4>Structure Details:</h4>
             <div class="structure-description">
@@ -2922,7 +2933,7 @@
             <div class="structure-requirements">
               Requires:<br>
               ${requirementsList}<br>
-              Can be built on: ${TERRAIN_TYPES[structure.allowed_terrain].emoji}
+              Can be built on: ${allowedTerrainEmojis.join(' or ')}
             </div>
           `;
 
