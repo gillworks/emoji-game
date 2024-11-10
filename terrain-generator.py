@@ -179,6 +179,17 @@ class TerrainGenerator:
             door_y = height - 1
             terrain_map[door_y][door_x] = interior_terrains['door']
             
+            # Add storage chests along walls (20% chance per wall position)
+            for x in [0, width-1]:  # Left and right walls
+                for y in range(height):
+                    if y != door_y and random.random() < 0.1:  # Avoid placing on door row
+                        terrain_map[y][x] = interior_terrains['storage']
+                        
+            for y in [0]:  # Top wall only (bottom has door)
+                for x in range(width):
+                    if random.random() < 0.1:
+                        terrain_map[y][x] = interior_terrains['storage']
+            
             # Save the interior map
             map_data = []
             for y in range(height):
