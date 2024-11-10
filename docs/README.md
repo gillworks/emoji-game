@@ -133,7 +133,9 @@ A real-time multiplayer browser game where players explore a procedurally genera
 
 ### Storage System
 
-- Buildable storage chests (📦) for item storage
+- Two types of storage chests:
+  - 🗄️ Public chests: Found in building interiors, accessible by all players
+  - 📦 Private chests: Player-built, only accessible by owner
 - 20 storage slots per chest
 - Intuitive interface with keyboard controls:
   - Arrow keys to move cursor

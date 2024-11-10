@@ -207,12 +207,32 @@ Defines buildable structures in the game
 | Column | Type | Description |
 |--------|------|-------------|
 | id | text | Primary key |
-| emoji | text | Visual representation |
+| emoji | text | Default visual representation |
 | name | text | Display name |
 | description | text | Structure description |
 | terrain_type | text | What terrain type it becomes when built |
-| allowed_terrain | jsonb | Array of terrain types this can be built on (default: ["PLAIN"]) |
+| allowed_terrain | jsonb | Array of terrain types this can be built on |
+| variant_emojis | jsonb | Different visual variants for the structure |
 | created_at | timestamp | When the structure was added |
+
+Example variant_emojis format:
+
+```json
+{
+  "house": "🏠",
+  "church": "⛪️",
+  "office": "🏢"
+}
+```
+
+Or for storage chests:
+
+```json
+{
+  "public": "🗄️",
+  "private": "📦"
+}
+```
 
 ### resource_spawns
 
