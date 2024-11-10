@@ -1974,3 +1974,12 @@ ALTER PUBLICATION supabase_realtime ADD TABLE player_positions;
 
 -- Add SPLIT to existing enum
 ALTER TYPE storage_action ADD VALUE IF NOT EXISTS 'SPLIT';
+
+-- Update the structures table to include variant emojis for buildings
+UPDATE structures 
+SET variant_emojis = '{
+    "house": "🏠",
+    "church": "⛪️",
+    "office": "🏢"
+}'::jsonb
+WHERE id = 'HOUSE';

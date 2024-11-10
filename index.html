@@ -1146,11 +1146,19 @@
               ctx.fillStyle = terrain.color;
               ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
 
-              // Get the correct emoji for storage chests
+              // Get the correct emoji for structures
               let displayEmoji = terrain.emoji;
               if (terrain.metadata?.structure_id === 'STORAGE_CHEST') {
                 const variant = terrain.metadata.variant || 'private';
                 displayEmoji = variant === 'public' ? '🗄️' : '📦';
+              } else if (terrain.metadata?.structure_id === 'HOUSE') {
+                const variant = terrain.metadata.variant || 'house';
+                const variantEmojis = {
+                  'house': '🏠',
+                  'church': '⛪️',
+                  'office': '🏢'
+                };
+                displayEmoji = variantEmojis[variant] || '🏠';
               }
 
               // Draw terrain emoji with larger size
@@ -2666,6 +2674,20 @@
                     // If no owner, allow anyone to access
                     actionsLabel.textContent = 'E to open';
                   }
+                  actionsSlot.style.display = 'flex';
+                } else if (mapData.metadata.structure_id === 'HOUSE') {
+                  // Get the correct emoji based on variant
+                  const variant = mapData.metadata.variant || 'house';
+                  const variantEmojis = {
+                    'house': '🏠',
+                    'church': '⛪️',
+                    'office': '🏢'
+                  };
+                  const displayEmoji = variantEmojis[variant] || '🏠';
+                  
+                  gameState.currentResource = null;
+                  actionsDisplay.textContent = displayEmoji;
+                  actionsLabel.textContent = 'E to enter';
                   actionsSlot.style.display = 'flex';
                 } else {
                   // Other structure

@@ -271,22 +271,18 @@ class TerrainGenerator:
             # Generate terrain map
             terrain_map = self.generate_map()
             
+            # Initialize map_data list
+            map_data = []
+            
             # Add some houses on plains (5% chance)
             for y in range(self.height):
                 for x in range(self.width):
                     if terrain_map[y][x] == 'PLAIN' and random.random() < 0.05:
-                        terrain_map[y][x] = 'HOUSE'
-                        house_positions.append({'x': x, 'y': y})
-            
-            # Prepare map data for insertion
-            map_data = []
-            for y in range(self.height):
-                for x in range(self.width):
-                    terrain = terrain_map[y][x]
-                    metadata = {}
-                    
-                    # Configure house portals
-                    if terrain == 'HOUSE':
+                        # Choose a random building variant
+                        building_variants = ['house', 'church', 'office']
+                        chosen_variant = random.choice(building_variants)
+                        
+                        # Create the interior server first
                         destination = self.portal_configs['HOUSE']['destinations'][0]
                         interior_result = self.create_interior_server(
                             name=destination['name'],
@@ -295,21 +291,45 @@ class TerrainGenerator:
                         )
                         
                         if interior_result:
-                            interior_servers[f"{x}_{y}"] = interior_result
-                            metadata['portal_config'] = {
-                                'destination_server': interior_result['server']['id'],
-                                'destination_x': destination['width'] // 2,
-                                'destination_y': destination['height'] - 1
+                            terrain_map[y][x] = 'HOUSE'
+                            metadata = {
+                                'structure_id': 'HOUSE',
+                                'variant': chosen_variant,  # Store which variant this building is
+                                'portal_config': {
+                                    'destination_server': interior_result['server']['id'],
+                                    'destination_x': destination['width'] // 2,
+                                    'destination_y': destination['height'] - 1
+                                }
                             }
-                    
-                    map_data.append({
-                        'server_id': server_id,
-                        'x': x,
-                        'y': y,
-                        'terrain_type': terrain,
-                        'original_terrain_type': terrain,
-                        'metadata': metadata
-                    })
+                            house_positions.append({'x': x, 'y': y})
+                            interior_servers[f"{x}_{y}"] = interior_result
+                            
+                            # Add the house to map_data
+                            map_data.append({
+                                'server_id': server_id,
+                                'x': x,
+                                'y': y,
+                                'terrain_type': 'HOUSE',
+                                'original_terrain_type': 'HOUSE',
+                                'metadata': metadata
+                            })
+            
+            # Add remaining tiles to map_data
+            for y in range(self.height):
+                for x in range(self.width):
+                    # Skip if we already added this position as a house
+                    if not any(tile['x'] == x and tile['y'] == y for tile in map_data):
+                        terrain = terrain_map[y][x]
+                        metadata = {}
+                        
+                        map_data.append({
+                            'server_id': server_id,
+                            'x': x,
+                            'y': y,
+                            'terrain_type': terrain,
+                            'original_terrain_type': terrain,
+                            'metadata': metadata
+                        })
             
             # Insert map data
             self.supabase.table('map_data').insert(map_data).execute()
