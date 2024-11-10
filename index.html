@@ -16,7 +16,6 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <script>
-      // Add this line at the start of the first <script> section, before any gameState access
       let gameState = {};
 
       function getEnvVariable(name) {
@@ -45,7 +44,6 @@
         stacks: {},
       };
 
-      // Add this near the top with other utility functions
       function debounce(func, wait) {
         let timeout;
         return function executedFunction(...args) {
@@ -58,7 +56,6 @@
         };
       }
 
-      // Add this before the debouncedUseItem function
       function showCollectionMessage(message) {
         const messageElement = document.createElement("div");
         messageElement.className = "collection-message";
@@ -1216,7 +1213,6 @@
         // Add after the gameState declaration
         let isAdmin = false;
 
-        // Add this function after initSupabase
         async function checkAdminStatus() {
           try {
             const { data, error } = await supabaseClient
@@ -1456,7 +1452,6 @@
           gameMap.style.cursor = "grab";
         });
 
-        // Add this near the top of the file with other gameState initialization
         let selectedStorageSlot = null;
 
         // Update the keyboard event handler to check for open modals
@@ -1814,12 +1809,10 @@
 
             hideLoadingScreen();
 
-            // Add this to the initGame function, after the player data is loaded
             // Find this section in initGame:
             if (!playerError && playerData) {
               document.getElementById("player-username").textContent = playerData.username;
               
-              // Add this line:
               await checkAdminStatus();
             }
           } catch (error) {
@@ -3110,7 +3103,6 @@
           lastInventorySlot: 1
         };
 
-        // Add this function to handle cursor movement
         function moveCursor(direction) {
           const isStorage = cursorPosition.section === 'storage';
           const maxSlots = isStorage ? 20 : 10;
@@ -3150,7 +3142,7 @@
 
           cursorPosition.slot = newSlot;
           updateCursorVisuals();
-          updateTransferButton();  // Add this line
+          updateTransferButton();
 
           // Add visual feedback for active section
           document.querySelectorAll('.inventory-section').forEach(section => {
@@ -3164,7 +3156,6 @@
           }
         }
 
-        // Add this function to update visual cursor position
         function updateCursorVisuals() {
           // Remove cursor class from all slots
           document.querySelectorAll('.storage-slot').forEach(slot => {
@@ -3182,17 +3173,6 @@
           }
         }
 
-        // Add this function to select the slot under the cursor
-        function selectSlotUnderCursor() {
-          if (cursorPosition.section === 'storage') {
-            selectStorageSlot(cursorPosition.slot);
-          } else {
-            selectInventorySlot(cursorPosition.slot);
-          }
-          updateTransferButton();  // Add this line
-        }
-
-        // Add this function to execute storage action when slots are selected
         function executeStorageAction() {
           // Get the source slot (where the cursor is)
           const isSourceStorage = cursorPosition.section === 'storage';
@@ -3255,7 +3235,6 @@
           });
         }
 
-        // Add this function to update the transfer button state
         function updateTransferButton() {
           const transferButton = document.getElementById('transfer-button');
           
