@@ -106,8 +106,6 @@ A real-time multiplayer browser game where players explore a procedurally genera
 - Press 'B' to open building menu
 - Multiple structure types:
   - 🏠 House: A cozy shelter
-  - 🌾 Farm: Grows food
-  - 🏭 Workshop: Crafting station
 - Terrain-specific building requirements
 - Resource costs for each structure
 - Real-time structure placement

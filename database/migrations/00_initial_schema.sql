@@ -82,7 +82,7 @@ CREATE TABLE map_data (
     metadata JSONB DEFAULT '{}'::jsonb,
     PRIMARY KEY (server_id, x, y),
     CONSTRAINT valid_terrain_types 
-        CHECK (terrain_type IN ('FOREST', 'MOUNTAIN', 'PLAIN', 'OCEAN', 'EMPTY_FOREST', 'HOUSE', 'FARM', 'WORKSHOP', 'STORAGE_CHEST', 'DOOR', 'FLOOR'))
+        CHECK (terrain_type IN ('FOREST', 'MOUNTAIN', 'PLAIN', 'OCEAN', 'EMPTY_FOREST', 'HOUSE', 'STORAGE_CHEST', 'DOOR', 'FLOOR'))
 );
 
 -- Add documentation for map_data metadata column
@@ -1866,8 +1866,6 @@ INSERT INTO terrain_types (id, emoji, encounter, color, spawn_items) VALUES
     ('OCEAN', '🌊', '🦈', 'rgba(33, 150, 243, 0.3)', '[]'::jsonb),
     ('EMPTY_FOREST', '🌱', null, 'rgba(76, 175, 80, 0.3)', '[]'::jsonb),
     ('HOUSE', '🏠', null, 'rgba(139, 69, 19, 0.3)', '[]'::jsonb),
-    ('FARM', '🌾', null, 'rgba(124, 252, 0, 0.3)', '[]'::jsonb),
-    ('WORKSHOP', '🏭', null, 'rgba(169, 169, 169, 0.3)', '[]'::jsonb),
     ('STORAGE_CHEST', '📦', 'rgba(139, 69, 19, 0.3)', NULL, '[]'::jsonb),
     ('DOOR', '🚪', null, 'rgba(139, 69, 19, 0.3)', '[]'::jsonb),
     ('FLOOR', '🟫', null, 'rgba(139, 69, 19, 0.2)', '[]'::jsonb);
@@ -1894,8 +1892,6 @@ VALUES
 -- Insert structures
 INSERT INTO structures (id, emoji, name, description, terrain_type, allowed_terrain) VALUES
     ('HOUSE', '🏠', 'House', 'A cozy shelter', 'HOUSE', '["PLAIN"]'::jsonb),
-    ('FARM', '🌾', 'Farm', 'Grows food', 'FARM', '["PLAIN"]'::jsonb),
-    ('WORKSHOP', '🏭', 'Workshop', 'Crafting station', 'WORKSHOP', '["PLAIN"]'::jsonb),
     ('STORAGE_CHEST', '📦', 'Storage Chest', 'Store items securely', 'STORAGE_CHEST', '["PLAIN", "FLOOR"]'::jsonb);
 
 -- Insert crafting recipes
