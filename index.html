@@ -1794,6 +1794,7 @@
                   emoji: pos.players?.emoji || "🐻", // Use bear as fallback
                 });
               });
+              updateTileInfo();
             }
 
             // Initialize hotbar
@@ -2238,7 +2239,8 @@
                 async (payload) => {
                   if (!gameState.playerPos) return;
 
-                  const position = payload.new;
+                  // For DELETE events, payload.new will be null, so use payload.old
+                  const position = payload.eventType === 'DELETE' ? payload.old : payload.new;
                   if (position.player_id === gameState.playerId) return;
 
                   // Get player's emoji from players table
@@ -2253,17 +2255,38 @@
                     return;
                   }
 
+                  const wasOnMyTile = payload.old && 
+                    payload.old.x === gameState.playerPos.x && 
+                    payload.old.y === gameState.playerPos.y;
+                  
+                  const isOnMyTile = payload.new && 
+                    payload.new.x === gameState.playerPos.x && 
+                    payload.new.y === gameState.playerPos.y;
+
                   switch (payload.eventType) {
                     case "INSERT":
-                    case "UPDATE":
                       gameState.otherPlayers.set(position.player_id, {
                         x: position.x,
                         y: position.y,
-                        emoji: playerData.emoji || "🐻", // Use bear as fallback
+                        emoji: playerData.emoji || "🐻",
                       });
+                      if (isOnMyTile) updateTileInfo();
+                      break;
+                    case "UPDATE":
+                      // First update their position in our gameState
+                      gameState.otherPlayers.set(position.player_id, {
+                        x: payload.new.x,
+                        y: payload.new.y,
+                        emoji: playerData.emoji || "🐻",
+                      });
+                      
+                      // Force an updateTileInfo call regardless of wasOnMyTile/isOnMyTile check
+                      // This ensures our display updates even when players move away
+                      updateTileInfo();
                       break;
                     case "DELETE":
                       gameState.otherPlayers.delete(position.player_id);
+                      if (wasOnMyTile) updateTileInfo();
                       break;
                   }
                   renderMap();
@@ -2398,14 +2421,60 @@
 
             // Update resources display
             const resourcesDisplay = document.getElementById("tile-resources");
-            if (resourcesDisplay) {
+            const resourcesSlot = document.querySelector('.hotbar-slot[data-slot="resources"]');
+            if (resourcesDisplay && resourcesSlot) {
               if (actionData && actionData.length > 0) {
                 // Show both tool and resource emojis
                 resourcesDisplay.textContent = `${actionData[0].result_items.emoji}${actionData[0].items.emoji}`;
+                resourcesSlot.style.display = 'flex';
               } else {
                 resourcesDisplay.textContent = "";
+                resourcesSlot.style.display = 'none';
               }
             }
+
+            // Check for other players at current position
+            const otherPlayersHere = Array.from(gameState.otherPlayers.entries())
+              .filter(([_, pos]) => pos.x === gameState.playerPos.x && pos.y === gameState.playerPos.y)
+              .map(([_, pos]) => pos.emoji);
+
+            // Update or create the other players display
+            let otherPlayersSlot = document.querySelector('.hotbar-slot[data-slot="other-players"]');
+            
+            if (!otherPlayersSlot) {
+              // Create the slot if it doesn't exist
+              otherPlayersSlot = document.createElement('div');
+              otherPlayersSlot.className = 'hotbar-slot';
+              otherPlayersSlot.setAttribute('data-slot', 'other-players');
+              
+              const slotContent = document.createElement('div');
+              slotContent.className = 'slot-content';
+              
+              const slotLabel = document.createElement('div');
+              slotLabel.className = 'slot-label';
+              slotLabel.textContent = 'Players Here';
+              
+              otherPlayersSlot.appendChild(slotContent);
+              otherPlayersSlot.appendChild(slotLabel);
+              
+              // Add it after the actions slot
+              const actionsSlot = document.querySelector('.hotbar-slot[data-slot="actions"]');
+              if (actionsSlot) {
+                actionsSlot.parentNode.insertBefore(otherPlayersSlot, actionsSlot.nextSibling);
+              }
+            }
+
+            // Update the content
+            const otherPlayersContent = otherPlayersSlot.querySelector('.slot-content');
+            if (otherPlayersContent) {
+              if (otherPlayersHere.length > 0) {
+                otherPlayersContent.textContent = otherPlayersHere.join(' ');
+                otherPlayersSlot.style.display = 'flex';
+              } else {
+                otherPlayersSlot.style.display = 'none';
+              }
+            }
+
           } catch (error) {
             console.error('Error fetching terrain actions:', error);
           }
@@ -2443,14 +2512,16 @@
 
             // Update actions display and label
             const actionsDisplay = document.getElementById("tile-actions");
+            const actionsSlot = document.querySelector('.hotbar-slot[data-slot="actions"]');
             const actionsLabel = document.querySelector('.hotbar-slot[data-slot="actions"] .slot-label');
-            
-            if (actionsDisplay && actionsLabel) {
+
+            if (actionsDisplay && actionsSlot && actionsLabel) {
               if (resources) {
                 // It's a resource spawn
                 gameState.currentResource = resources;
                 actionsDisplay.textContent = resources.items.emoji;
                 actionsLabel.textContent = 'E to pick up';
+                actionsSlot.style.display = 'flex';
               } else if (mapData?.metadata?.structure_id) {
                 // It's a structure
                 gameState.currentResource = null;
@@ -2462,15 +2533,18 @@
                   // Show different message based on ownership
                   actionsLabel.textContent = mapData.metadata.owner_id === gameState.playerId ? 
                     'E to open' : 'Not your storage';
+                  actionsSlot.style.display = 'flex';
                 } else {
                   actionsDisplay.textContent = ""; // Structure emoji is shown in terrain
                   actionsLabel.textContent = 'E to interact';
+                  actionsSlot.style.display = 'flex';
                 }
               } else {
                 // Nothing to interact with
                 gameState.currentResource = null;
                 actionsDisplay.textContent = "";
-                actionsLabel.textContent = ''; // Leave blank for non-interactive tiles
+                actionsLabel.textContent = '';
+                actionsSlot.style.display = 'none';
               }
             }
           } catch (error) {
