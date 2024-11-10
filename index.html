@@ -2637,8 +2637,16 @@
                   gameState.currentResource = null;
                   const terrainEmoji = document.getElementById("tile-terrain").textContent;
                   actionsDisplay.textContent = terrainEmoji;
-                  actionsLabel.textContent = mapData.metadata.owner_id === gameState.playerId ? 
-                    'E to open' : 'Not your storage';
+                  
+                  // Check if chest has an owner
+                  if (mapData.metadata.owner_id) {
+                    // If owned, only allow access to owner
+                    actionsLabel.textContent = mapData.metadata.owner_id === gameState.playerId ? 
+                      'E to open' : 'Not your storage';
+                  } else {
+                    // If no owner, allow anyone to access
+                    actionsLabel.textContent = 'E to open';
+                  }
                   actionsSlot.style.display = 'flex';
                 } else {
                   // Other structure
@@ -2668,7 +2676,7 @@
             // Check if there's a structure or portal at the current position
             const { data: mapData, error: mapError } = await supabaseClient
               .from('map_data')
-              .select('metadata, terrain_type')  // Add terrain_type to selection
+              .select('metadata, terrain_type')
               .match({
                 server_id: gameState.serverId,
                 x: gameState.playerPos.x,
@@ -2715,12 +2723,12 @@
             if (mapData?.metadata?.structure_id === 'STORAGE_CHEST') {
               const ownerId = mapData.metadata.owner_id;
               
-              if (ownerId !== gameState.playerId) {
+              // Allow access if chest is unowned or owned by the player
+              if (!ownerId || ownerId === gameState.playerId) {
+                openStorageMenu(gameState.serverId, gameState.playerPos.x, gameState.playerPos.y);
+              } else {
                 showCollectionMessage("You don't own this storage chest");
-                return;
               }
-              
-              openStorageMenu(gameState.serverId, gameState.playerPos.x, gameState.playerPos.y);
               return;
             }
 

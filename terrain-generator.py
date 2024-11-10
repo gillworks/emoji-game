@@ -179,38 +179,66 @@ class TerrainGenerator:
             door_y = height - 1
             terrain_map[door_y][door_x] = interior_terrains['door']
             
-            # Add storage chests along walls (20% chance per wall position)
+            # Initialize map_data list
+            map_data = []
+            
+            # Add storage chests along walls (10% chance per wall position)
             for x in [0, width-1]:  # Left and right walls
                 for y in range(height):
                     if y != door_y and random.random() < 0.1:  # Avoid placing on door row
                         terrain_map[y][x] = interior_terrains['storage']
-                        
+                        metadata = {
+                            'structure_id': 'STORAGE_CHEST',
+                            'built_at': datetime.utcnow().isoformat()
+                            # No owner_id means it's a public chest
+                        }
+                        map_data.append({
+                            'server_id': server['id'],
+                            'x': x,
+                            'y': y,
+                            'terrain_type': interior_terrains['storage'],
+                            'original_terrain_type': interior_terrains['storage'],
+                            'metadata': metadata
+                        })
+            
             for y in [0]:  # Top wall only (bottom has door)
                 for x in range(width):
                     if random.random() < 0.1:
                         terrain_map[y][x] = interior_terrains['storage']
+                        metadata = {
+                            'structure_id': 'STORAGE_CHEST',
+                            'built_at': datetime.utcnow().isoformat()
+                            # No owner_id means it's a public chest
+                        }
+                        map_data.append({
+                            'server_id': server['id'],
+                            'x': x,
+                            'y': y,
+                            'terrain_type': interior_terrains['storage'],
+                            'original_terrain_type': interior_terrains['storage'],
+                            'metadata': metadata
+                        })
             
-            # Save the interior map
-            map_data = []
+            # Add remaining tiles to map_data
             for y in range(height):
                 for x in range(width):
-                    terrain = str(terrain_map[y][x])
-                    metadata = {}
-                    
-                    # Verify terrain type is valid
-                    if terrain not in self.terrain_types:
-                        raise ValueError(f"Invalid terrain type: {terrain}")
-                    
-                    # Don't set portal config for door yet - we'll update it later
-                    
-                    map_data.append({
-                        'server_id': server['id'],
-                        'x': x,
-                        'y': y,
-                        'terrain_type': terrain,
-                        'original_terrain_type': terrain,
-                        'metadata': metadata
-                    })
+                    # Skip if we already added this position as a storage chest
+                    if not any(tile['x'] == x and tile['y'] == y for tile in map_data):
+                        terrain = str(terrain_map[y][x])
+                        metadata = {}
+                        
+                        # Verify terrain type is valid
+                        if terrain not in self.terrain_types:
+                            raise ValueError(f"Invalid terrain type: {terrain}")
+                        
+                        map_data.append({
+                            'server_id': server['id'],
+                            'x': x,
+                            'y': y,
+                            'terrain_type': terrain,
+                            'original_terrain_type': terrain,
+                            'metadata': metadata
+                        })
             
             # Insert map data
             self.supabase.table('map_data').insert(map_data).execute()

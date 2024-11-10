@@ -1148,7 +1148,7 @@ BEGIN
     AND y = p_y
     AND metadata->>'structure_id' = 'STORAGE_CHEST';
 
-    IF v_structure_owner IS NULL OR v_structure_owner != p_player_id THEN
+    IF v_structure_owner IS NOT NULL AND v_structure_owner != p_player_id THEN
         RETURN jsonb_build_object(
             'success', false,
             'message', 'You don''t own this storage chest'
