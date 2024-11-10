@@ -744,10 +744,10 @@
             gameState.mapWidth = serverData.map_width || 20;
             gameState.mapHeight = serverData.map_height || 20;
 
-            // Initialize empty map with correct dimensions
+            // Initialize empty map with nulls
             gameState.map = Array(gameState.mapHeight)
               .fill()
-              .map(() => Array(gameState.mapWidth).fill(TERRAIN_TYPES.PLAIN));
+              .map(() => Array(gameState.mapWidth).fill(null));
 
             // Load map data in pages
             const totalTiles = gameState.mapWidth * gameState.mapHeight;
@@ -1158,7 +1158,8 @@
           for (let y = 0; y < gameState.mapHeight; y++) {
             for (let x = 0; x < gameState.mapWidth; x++) {
               const terrain = gameState.map[y][x];
-              if (!terrain || !terrain.emoji) continue;
+              // Skip rendering if terrain is null
+              if (!terrain) continue;
 
               // Draw background color
               ctx.fillStyle = terrain.color;
