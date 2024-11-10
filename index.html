@@ -3072,12 +3072,6 @@
           
           const key = e.key.toLowerCase();
           switch (key) {
-            case "d":
-              handleStorageAction("DEPOSIT");
-              break;
-            case "w":
-              handleStorageAction("WITHDRAW");
-              break;
             case "escape":
               closeStorageMenu();
               break;
@@ -3100,11 +3094,6 @@
             case "tab":
               e.preventDefault();
               moveCursor('tab');
-              break;
-            case "enter":
-            case " ": // Space bar
-              e.preventDefault();
-              selectSlotUnderCursor();
               break;
             case "x":
               e.preventDefault();
