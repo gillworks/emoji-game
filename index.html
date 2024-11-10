@@ -1194,33 +1194,6 @@
           canvas.style.transform = `translate(${gameState.viewport.x}px, ${gameState.viewport.y}px) scale(${gameState.viewport.scale})`;
         }
 
-        // Also add this debug function
-        function debugMapSection(startX = 0, startY = 0, size = 5) {
-          console.log(
-            `Debugging map section from (${startX},${startY}) to (${
-              startX + size - 1
-            },${startY + size - 1}):`
-          );
-          for (let y = startY; y < startY + size; y++) {
-            let row = "";
-            for (let x = startX; x < startX + size; x++) {
-              if (gameState.map[y] && gameState.map[y][x]) {
-                row += gameState.map[y][x].emoji + " ";
-              } else {
-                row += "❌ ";
-              }
-            }
-            console.log(row);
-          }
-        }
-
-        // Call this after loadMap completes
-        function verifyMapRendering() {
-          debugMapSection(0, 0, 5); // Check top-left corner
-          debugMapSection(57, 57, 5); // Check middle section
-          debugMapSection(115, 115, 5); // Check bottom-right corner
-        }
-
         function initCanvas() {
           const canvas = document.getElementById("map-canvas");
           const cellSize = Math.min(window.innerWidth, window.innerHeight) * 0.04;
