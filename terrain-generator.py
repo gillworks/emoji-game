@@ -285,7 +285,7 @@ class TerrainGenerator:
                         # Create the interior server first
                         destination = self.portal_configs['HOUSE']['destinations'][0]
                         interior_result = self.create_interior_server(
-                            name=destination['name'],
+                            name=f"{chosen_variant}_interior",
                             width=destination['width'],
                             height=destination['height']
                         )
