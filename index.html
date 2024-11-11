@@ -2692,7 +2692,13 @@
                   }
                   
                   actionsDisplay.textContent = displayEmoji;
-                  actionsLabel.textContent = 'E to enter';
+
+                  // Check if current terrain is a door
+                  const terrainType = Object.keys(TERRAIN_TYPES).find(
+                    type => TERRAIN_TYPES[type].emoji === currentTerrain.emoji
+                  );
+                  
+                  actionsLabel.textContent = terrainType === 'DOOR' ? 'E to exit' : 'E to enter';
                   actionsSlot.style.display = 'flex';
                 } else if (mapData.metadata.structure_id) {
                   const structureId = mapData.metadata.structure_id;
