@@ -23,11 +23,6 @@ npm install
 # Supabase Configuration
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-
-# Game Configuration
-NEXT_PUBLIC_GAME_MAP_WIDTH=50
-NEXT_PUBLIC_GAME_MAP_HEIGHT=50
-NEXT_PUBLIC_MAX_PLAYERS_PER_SERVER=10
 ```
 
 4. Generate the config file:
