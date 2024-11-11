@@ -637,6 +637,11 @@ DECLARE
     v_remaining_quantity integer;
     v_stack RECORD;
     v_terrain_valid boolean;
+    v_interior_server_id UUID;
+    v_interior_width INTEGER := 10;
+    v_interior_height INTEGER := 10;
+    v_door_x INTEGER;
+    v_door_y INTEGER;
 BEGIN
     -- Get the recipe
     SELECT * INTO v_recipe
@@ -751,24 +756,91 @@ BEGIN
         END LOOP;
     END LOOP;
 
-    -- Handle structure building
-    IF v_recipe.is_structure THEN
-        -- Place the structure
+    -- If this is a house structure, create the interior server first
+    IF v_recipe.is_structure AND v_structure.id = 'HOUSE' THEN
+        -- Create new interior server
+        INSERT INTO servers (
+            name,
+            status,
+            max_players,
+            map_width,
+            map_height
+        ) VALUES (
+            format('house-interior-%s', gen_random_uuid()),
+            'active',
+            10,
+            v_interior_width,
+            v_interior_height
+        ) RETURNING id INTO v_interior_server_id;
+
+        -- Set door position at bottom center
+        v_door_x := v_interior_width / 2;
+        v_door_y := v_interior_height - 1;
+
+        -- Create interior map data
+        INSERT INTO map_data (server_id, x, y, terrain_type, original_terrain_type, metadata)
+        SELECT 
+            v_interior_server_id,
+            x.x,
+            y.y,
+            CASE 
+                WHEN x.x = v_door_x AND y.y = v_door_y THEN 'DOOR'
+                ELSE 'FLOOR'
+            END,
+            CASE 
+                WHEN x.x = v_door_x AND y.y = v_door_y THEN 'DOOR'
+                ELSE 'FLOOR'
+            END,
+            CASE 
+                WHEN x.x = v_door_x AND y.y = v_door_y THEN jsonb_build_object(
+                    'portal_config', jsonb_build_object(
+                        'destination_server', p_server_id,
+                        'destination_x', p_x,
+                        'destination_y', p_y
+                    )
+                )
+                ELSE '{}'::jsonb
+            END
+        FROM generate_series(0, v_interior_width - 1) x(x)
+        CROSS JOIN generate_series(0, v_interior_height - 1) y(y);
+
+        -- Update the house metadata to include portal configuration
         UPDATE map_data 
         SET 
-            terrain_type = v_structure.terrain_type,
+            terrain_type = 'HOUSE',
             metadata = jsonb_build_object(
-                'structure_id', v_structure.id,
+                'structure_id', 'HOUSE',
+                'variant', 'house',
                 'owner_id', p_player_id,
-                'built_at', now(),
-                'variant', CASE 
-                    WHEN v_structure.id = 'STORAGE_CHEST' THEN 'private'
-                    ELSE NULL 
-                END
+                'portal_config', jsonb_build_object(
+                    'destination_server', v_interior_server_id,
+                    'destination_x', v_door_x,
+                    'destination_y', v_door_y
+                )
             )
-        WHERE server_id = p_server_id 
-        AND x = p_x 
-        AND y = p_y;
+        WHERE server_id = p_server_id AND x = p_x AND y = p_y;
+    END IF;
+
+    -- Handle structure building
+    IF v_recipe.is_structure THEN
+        -- Place the structure (if not a house - houses are already placed above)
+        IF v_structure.id != 'HOUSE' THEN
+            UPDATE map_data 
+            SET 
+                terrain_type = v_structure.terrain_type,
+                metadata = jsonb_build_object(
+                    'structure_id', v_structure.id,
+                    'owner_id', p_player_id,
+                    'built_at', now(),
+                    'variant', CASE 
+                        WHEN v_structure.id = 'STORAGE_CHEST' THEN 'private'
+                        ELSE NULL 
+                    END
+                )
+            WHERE server_id = p_server_id 
+            AND x = p_x 
+            AND y = p_y;
+        END IF;
 
         RETURN jsonb_build_object(
             'success', true,
