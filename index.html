@@ -273,6 +273,9 @@
           <div>HP: <span id="health">100</span></div>
           <div>XP: <span id="score">0</span></div>
         </div>
+        <div class="server-info">
+          <span id="server-name">-</span>
+        </div>
         <div class="status-right">
           <div>
             <span
@@ -423,7 +426,6 @@
         <button id="restart-button" onclick="restartGame()">Play Again</button>
       </div>
 
-      <!-- Add this before </body> -->
       <div id="crafting-modal" class="modal">
         <div class="modal-content">
           <div class="modal-header">
@@ -446,7 +448,6 @@
         </div>
       </div>
 
-      <!-- Add this before </body> -->
       <div id="build-modal" class="modal">
         <div class="modal-content">
           <div class="modal-header">
@@ -1727,6 +1728,16 @@
             const serverId = await findOrCreateServer();
             gameState.serverId = serverId;
 
+            const { data: serverData, error: serverError } = await supabaseClient
+              .from('servers')
+              .select('name')
+              .eq('id', serverId)
+              .single();
+
+            if (!serverError && serverData) {
+              document.getElementById('server-name').textContent = serverData.name;
+            }
+
             // Add demo mode UI adjustments
             if (isDemoMode) {
               document.querySelector(
@@ -2793,6 +2804,16 @@
                   x: data.new_x,
                   y: data.new_y
                 };
+
+                const { data: serverData, error: serverError } = await supabaseClient
+                  .from('servers')
+                  .select('name')
+                  .eq('id', data.new_server_id)
+                  .single();
+
+                if (!serverError && serverData) {
+                  document.getElementById('server-name').textContent = serverData.name;
+                }
 
                 // Reload map and other server-specific data
                 await loadMap(gameState.serverId);
