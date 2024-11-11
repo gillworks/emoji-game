@@ -8,7 +8,7 @@ A real-time multiplayer browser game where players explore a procedurally genera
 
 ```bash
 git clone [your-repo-url]
-cd emoji-adventure
+cd emoji-game
 ```
 
 2. Install dependencies:
