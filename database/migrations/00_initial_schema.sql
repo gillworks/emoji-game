@@ -1007,14 +1007,21 @@ DECLARE
     v_x integer;
     v_y integer;
 BEGIN
-    -- Reset terrain to original state
+    -- Reset terrain and metadata selectively
     UPDATE map_data 
     SET terrain_type = original_terrain_type,
-        metadata = NULL
+        metadata = CASE 
+            WHEN metadata ? 'built_at' OR metadata ? 'owner_id' THEN NULL  -- Clear metadata for player-built or owned structures
+            ELSE metadata  -- Preserve metadata for non-built/non-owned structures
+        END
     WHERE server_id = server_id_param;
 
     -- Clear existing resources
     DELETE FROM resource_spawns 
+    WHERE server_id = server_id_param;
+
+    -- Clear storage inventories for this server
+    DELETE FROM storage_inventories
     WHERE server_id = server_id_param;
 
     -- Attempt initial resource spawns for each tile
