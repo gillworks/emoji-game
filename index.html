@@ -2672,7 +2672,7 @@
                 actionsDisplay.textContent = resources.items.emoji;
                 actionsLabel.textContent = 'E to pick up';
                 actionsSlot.style.display = 'flex';
-              } else if (mapData?.metadata) {
+              } else if (mapData?.metadata?.portal_config || mapData?.metadata?.structure_id) {
                 if (mapData.metadata.portal_config) {
                   // It's a portal
                   gameState.currentResource = null;
@@ -2741,9 +2741,9 @@
                   actionsSlot.style.display = 'flex';
                 }
               } else {
-                // Nothing to interact with
+                // Nothing to interact with - clear and hide the actions slot
                 gameState.currentResource = null;
-                actionsDisplay.textContent = "";
+                actionsDisplay.textContent = '';
                 actionsLabel.textContent = '';
                 actionsSlot.style.display = 'none';
               }
