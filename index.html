@@ -663,13 +663,12 @@
             // Rest of the function remains the same
             const { data: servers, error: serverError } = await supabaseClient
               .from("servers")
-              .select(
-                `
+              .select(`
                 *,
                 player_count:server_players(count)
-              `
-              )
+              `)
               .eq("status", "active")
+              .like("name", 'World-%')
               .limit(1);
 
             if (serverError) throw serverError;
@@ -690,13 +689,11 @@
                 .from("servers")
                 .insert([
                   {
-                    name: `Server ${Math.floor(Math.random() * 1000)}`,
+                    name: `World-${Math.floor(Math.random() * 1000)}`,
                     status: "active",
                     max_players: 100,
                   },
                 ])
-                .select()
-                .single();
 
               if (createError) throw createError;
               serverId = newServer.id;
