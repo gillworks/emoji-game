@@ -4,6 +4,8 @@ A real-time multiplayer browser game where players explore a procedurally genera
 
 ## Installation
 
+### Local Development
+
 1. Clone the repository:
 
 ```bash
@@ -44,21 +46,43 @@ http-server
 http://localhost:8080
 ```
 
+### Deploying to Vercel
+
+1. Push your code to a Git repository (GitHub, GitLab, or Bitbucket)
+
+2. Log in to your Vercel account and click "New Project"
+
+3. Import your repository
+
+4. Add Environment Variables:
+
+   - Add the same variables from your `.env.local`:
+     - NEXT_PUBLIC_SUPABASE_URL
+     - NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+5. Configure the project:
+
+   - Framework Preset: Other
+   - Root Directory: ./
+   - Build Command: `npm run generate-config`
+   - Output Directory: ./
+
+6. Click "Deploy"
+
+Your project will be automatically deployed and you'll receive a production URL.
+
+### Automatic Deployments
+
+- Vercel will automatically deploy when you push to your main branch
+- Each pull request gets its own preview deployment
+- You can configure custom domains in your Vercel project settings
+
 ### Prerequisites
 
 - Node.js (v14 or higher)
 - Python 3.x (for terrain generation and local server)
 - A modern web browser
 - A Supabase account and project
-
-### Development Notes
-
-- The `config.js` file is generated from your `.env.local` and should not be committed to git
-- After making changes to `.env.local`, run `npm run generate-config` to update your configuration
-- The terrain generator requires Python with additional packages:
-  ```bash
-  pip install python-dotenv supabase noise
-  ```
 
 ## Game Features
 
