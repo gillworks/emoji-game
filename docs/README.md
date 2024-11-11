@@ -34,14 +34,14 @@ npm run generate-config
 5. Start a local server:
 
 ```bash
-python -m http.server 8000
+http-server
 # Or use your preferred local server
 ```
 
 6. Open your browser and navigate to:
 
 ```
-http://localhost:8000
+http://localhost:8080
 ```
 
 ### Prerequisites
