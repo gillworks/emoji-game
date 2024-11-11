@@ -1,0 +1,9 @@
+{
+  "scripts": {
+    "generate-config": "node scripts/generate-config.js",
+    "prebuild": "npm run generate-config"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
+}
