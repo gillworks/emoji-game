@@ -1,6 +1,11 @@
 -- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Create ENUM types
+CREATE TYPE item_action_type AS ENUM ('GATHER', 'TRANSFORM');
+CREATE TYPE move_result AS ENUM ('MOVE', 'SWAP', 'STACK');
+CREATE TYPE storage_action AS ENUM ('DEPOSIT', 'WITHDRAW', 'SPLIT');
+
 ------------------------------------------
 -- Core Tables
 ------------------------------------------
@@ -130,9 +135,6 @@ CREATE TABLE player_inventory (
     quantity INTEGER DEFAULT 1 CHECK (quantity > 0),
     PRIMARY KEY (player_id, slot)
 );
-
--- Item terrain actions table
-CREATE TYPE item_action_type AS ENUM ('GATHER', 'TRANSFORM');
 
 CREATE TABLE item_terrain_actions (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -1552,7 +1554,6 @@ ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE game_configs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE servers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE server_players ENABLE ROW LEVEL SECURITY;
-ALTER TABLE terrain_types ENABLE ROW LEVEL SECURITY;
 ALTER TABLE map_data ENABLE ROW LEVEL SECURITY;
 ALTER TABLE player_positions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE items ENABLE ROW LEVEL SECURITY;
@@ -1945,20 +1946,20 @@ INSERT INTO terrain_types (id, emoji, encounter, color, spawn_items) VALUES
     ('OCEAN', '🌊', '🦈', 'rgba(33, 150, 243, 0.3)', '[]'::jsonb),
     ('EMPTY_FOREST', '🌱', null, 'rgba(76, 175, 80, 0.3)', '[]'::jsonb),
     ('HOUSE', '🏠', null, 'rgba(139, 69, 19, 0.3)', '[]'::jsonb),
-    ('STORAGE_CHEST', '📦', 'rgba(139, 69, 19, 0.3)', NULL, '[]'::jsonb),
+    ('STORAGE_CHEST', '📦', null, 'rgba(139, 69, 19, 0.3)', '[]'::jsonb),
     ('DOOR', '🚪', null, 'rgba(139, 69, 19, 0.3)', '[]'::jsonb),
     ('FLOOR', '🟫', null, 'rgba(139, 69, 19, 0.2)', '[]'::jsonb);
 
 -- Insert items
 INSERT INTO items (id, emoji, name, stackable, max_stack) VALUES
-    ('AXE', '🪓', 'Axe', false, 1),
-    ('WOOD', '🪵', 'Wood', true, 64),
-    ('PICKAXE', '⛏️', 'Pickaxe', false, 1),
-    ('STONE', '🪨', 'Stone', true, 64),
-    ('FISHING_ROD', '🎣', 'Fishing Rod', false, 1),
-    ('FISH', '🐟', 'Fish', true, 64),
-    ('MUSHROOM', '🍄', 'Mushroom', true, 64),
-    ('CRYSTAL', '💎', 'Crystal', true, 64);
+    ('AXE', '🪓', 'Axe', true, 500),
+    ('WOOD', '🪵', 'Wood', true, 500),
+    ('PICKAXE', '⛏️', 'Pickaxe', true, 500),
+    ('STONE', '🪨', 'Stone', true, 500),
+    ('FISHING_ROD', '🎣', 'Fishing Rod', true, 500),
+    ('FISH', '🐟', 'Fish', true, 500),
+    ('MUSHROOM', '🍄', 'Mushroom', true, 500),
+    ('CRYSTAL', '💎', 'Crystal', true, 500);
 
 -- Insert item terrain actions
 INSERT INTO item_terrain_actions 
@@ -1976,33 +1977,44 @@ INSERT INTO structures (id, emoji, name, description, terrain_type, allowed_terr
 -- Insert crafting recipes
 WITH recipes AS (
     INSERT INTO crafting_recipes (id, result_item_id, quantity_produced) VALUES
-        ('2773dcb5-d668-4b0f-9876-d6a0d2e6c525', 'AXE', 1),
-        ('7c228a4d-df53-4f93-9e41-f3f62c0607f3', 'FISHING_ROD', 1),
-        ('9a7b6c5d-4e3f-2d1c-8b9a-0f1e2d3c4b5a', 'PICKAXE', 1)
-    RETURNING id
+        (gen_random_uuid(), 'AXE', 1),
+        (gen_random_uuid(), 'FISHING_ROD', 1),
+        (gen_random_uuid(), 'PICKAXE', 1)
+    RETURNING id, result_item_id
 ),
 house_recipe AS (
     INSERT INTO crafting_recipes (structure_id, is_structure, quantity_produced)
     VALUES ('HOUSE', true, 1)
+    RETURNING id
+),
+storage_recipe AS (
+    INSERT INTO crafting_recipes (structure_id, is_structure, quantity_produced)
+    VALUES ('STORAGE_CHEST', true, 1)
     RETURNING id
 )
 -- Insert recipe ingredients
 INSERT INTO crafting_ingredients (recipe_id, item_id, quantity_required)
 SELECT r.id, i.item_id, i.quantity
 FROM recipes r
-CROSS JOIN (VALUES
-    ('2773dcb5-d668-4b0f-9876-d6a0d2e6c525', 'WOOD', 2),
-    ('2773dcb5-d668-4b0f-9876-d6a0d2e6c525', 'STONE', 1),
-    ('7c228a4d-df53-4f93-9e41-f3f62c0607f3', 'WOOD', 3),
-    ('9a7b6c5d-4e3f-2d1c-8b9a-0f1e2d3c4b5a', 'WOOD', 2),
-    ('9a7b6c5d-4e3f-2d1c-8b9a-0f1e2d3c4b5a', 'STONE', 2)
-) AS i(recipe_id, item_id, quantity)
-WHERE r.id = i.recipe_id
+JOIN (VALUES
+    ('AXE', 'WOOD', 2),
+    ('AXE', 'STONE', 1),
+    ('FISHING_ROD', 'WOOD', 3),
+    ('PICKAXE', 'WOOD', 2),
+    ('PICKAXE', 'STONE', 2)
+) AS i(result_item_id, item_id, quantity)
+ON r.result_item_id = i.result_item_id
 UNION ALL
 SELECT house_recipe.id, item_id, quantity
 FROM house_recipe, (VALUES 
     ('WOOD', 10),
     ('STONE', 5)
+) AS ingredients(item_id, quantity)
+UNION ALL
+SELECT storage_recipe.id, item_id, quantity
+FROM storage_recipe, (VALUES 
+    ('WOOD', 4),
+    ('STONE', 2)
 ) AS ingredients(item_id, quantity);
 
 -- Insert emoji choices
@@ -2016,16 +2028,16 @@ INSERT INTO emoji_choices (emoji, name) VALUES
 -- Insert default game configs
 INSERT INTO game_configs (key, value) VALUES
     ('encounter_rates', '{
-        "FOREST": 0.3,
-        "MOUNTAIN": 0.4,
-        "PLAIN": 0.2,
-        "OCEAN": 0.3,
-        "EMPTY_FOREST": 0.0
+        "FOREST": 0.1,
+        "MOUNTAIN": 0.1,
+        "PLAIN": 0,
+        "OCEAN": 0.1,
+        "EMPTY_FOREST": 0
     }'::jsonb),
     ('resource_spawning', '{
-        "enabled": true,
+        "enabled": false,
         "spawn_chance": 0.1,
-        "spawn_interval": 300
+        "interval_minutes": 5
     }'::jsonb);
 
 -- Insert storage chest recipe
@@ -2045,7 +2057,9 @@ FROM storage_recipe, (VALUES
 -- Enable Realtime
 ------------------------------------------
 
+ALTER PUBLICATION supabase_realtime ADD TABLE map_data;
 ALTER PUBLICATION supabase_realtime ADD TABLE player_positions;
+ALTER PUBLICATION supabase_realtime ADD TABLE resource_spawns;
 
 -- Add SPLIT to existing enum
 ALTER TYPE storage_action ADD VALUE IF NOT EXISTS 'SPLIT';
