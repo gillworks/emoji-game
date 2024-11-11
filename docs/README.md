@@ -2,6 +2,69 @@
 
 A real-time multiplayer browser game where players explore a procedurally generated emoji world, battle creatures, gather resources, craft items, and build structures.
 
+## Installation
+
+1. Clone the repository:
+
+```bash
+git clone [your-repo-url]
+cd emoji-adventure
+```
+
+2. Install dependencies:
+
+```bash
+npm install
+```
+
+3. Create a `.env.local` file in the root directory:
+
+```bash
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Game Configuration
+NEXT_PUBLIC_GAME_MAP_WIDTH=50
+NEXT_PUBLIC_GAME_MAP_HEIGHT=50
+NEXT_PUBLIC_MAX_PLAYERS_PER_SERVER=10
+```
+
+4. Generate the config file:
+
+```bash
+npm run generate-config
+```
+
+5. Start a local server:
+
+```bash
+python -m http.server 8000
+# Or use your preferred local server
+```
+
+6. Open your browser and navigate to:
+
+```
+http://localhost:8000
+```
+
+### Prerequisites
+
+- Node.js (v14 or higher)
+- Python 3.x (for terrain generation and local server)
+- A modern web browser
+- A Supabase account and project
+
+### Development Notes
+
+- The `config.js` file is generated from your `.env.local` and should not be committed to git
+- After making changes to `.env.local`, run `npm run generate-config` to update your configuration
+- The terrain generator requires Python with additional packages:
+  ```bash
+  pip install python-dotenv supabase noise
+  ```
+
 ## Game Features
 
 ### Authentication
